@@ -28,9 +28,9 @@
     <div class="result-footer">
       <el-button @click="viewLog" type="link">查看安装日志</el-button>
       <el-button v-if="installerStore.state.installationStatus === 'success'" @click="launchApp"> 立即启动 </el-button>
-      <el-button type="primary" @click="$emit('back')">
+      <!-- <el-button type="primary" @click="$emit('back')">
         {{ installerStore.state.installationStatus === "success" ? "完成" : "返回" }}
-      </el-button>
+      </el-button> -->
       <el-button
         v-if="installerStore.state.installationStatus === 'success'"
         type="warning"
