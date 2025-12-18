@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件大小格式化测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-case {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .input {
+            font-weight: bold;
+            color: #333;
+        }
+        .output {
+            color: #007acc;
+            margin-left: 10px;
+        }
+        .error {
+            color: #d32f2f;
+        }
+        .success {
+            color: #388e3c;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>文件大小格式化函数测试</h1>
+    
+    <div id="test-results"></div>
+    
+    <script>
+        // 修复后的 formatBytes 函数
+        function formatBytes(bytes, decimals = 2) {
+            // 处理空值或无效值
+            if (bytes === undefined || bytes === null || bytes === "") {
+                return "0 Bytes"
+            }
+
+            // 将字符串转换为 bigint 或 number
+            let numBytes;
+            if (typeof bytes === "string") {
+                // 尝试解析为 bigint
+                try {
+                    numBytes = BigInt(bytes);
+                } catch (error) {
+                    // 如果解析失败，尝试解析为 number
+                    numBytes = parseFloat(bytes);
+                    if (isNaN(numBytes)) {
+                        return "未知大小";
+                    }
+                }
+            } else {
+                numBytes = bytes;
+            }
+
+            // 处理零值
+            if (numBytes === 0 || numBytes === 0n) {
+                return "0 Bytes";
+            }
+
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+            // 根据类型选择不同的计算方式
+            if (typeof numBytes === "bigint") {
+                // 使用 bigint 运算来计算单位
+                let i = 0;
+                let size = numBytes;
+                const kBig = BigInt(k);
+                
+                // 找到合适的单位
+                while (size >= kBig && i < sizes.length - 1) {
+                    size /= kBig;
+                    i++;
+                }
+                
+                // 转换为浮点数并保留小数位
+                const sizeNum = Number(size);
+                // 计算余数以获取小数部分
+                const remainder = numBytes % (kBig ** BigInt(i));
+                const decimalValue = remainder === 0n ? 0 : Number(remainder) / Number(kBig ** BigInt(i));
+                
+                const result = sizeNum + decimalValue;
+                return result.toFixed(dm) + " " + sizes[i];
+            } else {
+                // 对于普通数字的处理
+                if (numBytes < 1024) {
+                    return numBytes + " Bytes";
+                }
+                
+                const i = Math.floor(Math.log(numBytes) / Math.log(k));
+                return parseFloat((numBytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+            }
+        }
+
+        // 测试函数
+        function testFormatBytes() {
+            const testResults = document.getElementById('test-results');
+            testResults.innerHTML = '';
+            
+            // 测试用例数组
+            const testCases = [
+                {
+                    name: "6.13GB 测试",
+                    input: 6.13 * 1024 * 1024 * 1024,
+                    expected: "6.13 GB"
+                },
+                {
+                    name: "6.13GB 字符串测试",
+                    input: String(6.13 * 1024 * 1024 * 1024),
+                    expected: "6.13 GB"
+                },
+                {
+                    name: "6.13GB BigInt 测试",
+                    input: BigInt(Math.floor(6.13 * 1024 * 1024 * 1024)),
+                    expected: "6.13 GB"
+                },
+                {
+                    name: "1KB 测试",
+                    input: 1024,
+                    expected: "1.00 KB"
+                },
+                {
+                    name: "1.5MB 测试",
+                    input: 1.5 * 1024 * 1024,
+                    expected: "1.50 MB"
+                },
+                {
+                    name: "空值测试",
+                    input: null,
+                    expected: "0 Bytes"
+                },
+                {
+                    name: "未定义测试",
+                    input: undefined,
+                    expected: "0 Bytes"
+                },
+                {
+                    name: "零值测试",
+                    input: 0,
+                    expected: "0 Bytes"
+                },
+                {
+                    name: "大数值测试 (1TB)",
+                    input: 1024 * 1024 * 1024 * 1024,
+                    expected: "1.00 TB"
+                },
+                {
+                    name: "无效字符串测试",
+                    input: "invalid",
+                    expected: "未知大小"
+                }
+            ];
+
+            // 运行所有测试用例
+            testCases.forEach(testCase => {
+                const result = formatBytes(testCase.input);
+                const isPass = result === testCase.expected;
+                
+                const testElement = document.createElement('div');
+                testElement.className = 'test-case';
+                testElement.innerHTML = `
+                    <div class="test-name">${testCase.name}</div>
+                    <div class="input">输入: ${typeof testCase.input} ${testCase.input}</div>
+                    <div class="output">输出: ${result}</div>
+                    <div class="expected">期望: ${testCase.expected}</div>
+                    <div class="${isPass ? 'success' : 'error'}">${isPass ? '✓ 通过' : '✗ 失败'}</div>
+                `;
+                
+                testResults.appendChild(testElement);
+            });
+        }
+
+        // 页面加载完成后运行测试
+        document.addEventListener('DOMContentLoaded', testFormatBytes);
+    </script>
+</body>
+</html>
