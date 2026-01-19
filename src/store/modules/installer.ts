@@ -54,7 +54,7 @@ export const useInstallerStore = defineStore("installer", () => {
   const state = ref<InstallState>({
     step: 0,
     installType: "full",
-    installPath: "",
+    installPath: "C:\\Users\\QINGMING\\Downloads",
     components: mockComponents,
     installationProgress: 0,
     installationStatus: "idle",

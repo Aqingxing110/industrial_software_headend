@@ -13,7 +13,7 @@ export interface ComponentInfo {
 
 // 安装状态类型
 export interface InstallState {
-  step: number // 当前步骤：0-安装类型 1-组件选择 2-安装配置 3-安装中 4-安装结果
+  step: number // 当前步骤：0-安装类型 1-组件选择 2-安装中 3-安装结果
   installType: "full" | "custom" // 全量/自定义安装
   installPath: string
   components: ComponentInfo[] // 所有组件列表
@@ -28,7 +28,6 @@ export interface InstallState {
 export const INSTALL_STEPS = [
   { name: "安装类型", key: "type" },
   { name: "组件选择", key: "select" },
-  { name: "安装配置", key: "config" },
   { name: "安装中", key: "progress" },
   { name: "安装完成", key: "result" }
 ] as const

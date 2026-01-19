@@ -16,7 +16,7 @@ export function getUserInfoApi() {
 
 export function changePasswordApi(oldPassword: string, newPassword: string) {
   return request({
-    url: "/modUsers/changePassword", // 假设后端接口为 /changePassword
+    url: "/modUsers/changePassword",
     method: "POST",
     data: {
       oldPassword,
