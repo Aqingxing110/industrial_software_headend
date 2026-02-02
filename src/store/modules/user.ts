@@ -4,28 +4,31 @@ import { defineStore } from "pinia"
 import { usePermissionStore } from "./permission"
 import { useTagsViewStore } from "./tags-view"
 import { useSettingsStore } from "./settings"
-import { getToken, removeToken, setToken, getUsername, setUsername, removeUsername } from "@/utils/cache/cookies"
-import router, { resetRouter } from "@/router"
+import {
+  getToken,
+  removeToken,
+  setToken,
+  getUsername,
+  setUsername,
+  removeUsername,
+  getRoles,
+  setRoles,
+  removeRoles
+} from "@/utils/cache/cookies"
+import { resetRouter } from "@/router"
 import { loginApi } from "@/api/login"
 import { type LoginRequestData } from "@/api/login/types/login"
-import { createWebHistory, type RouteRecordRaw } from "vue-router"
-import routeSettings from "@/config/route"
 import { RegisterRequestData } from "@/api/register/types/register"
 import { registerApi } from "@/api/register"
 
 export const useUserStore = defineStore("user", () => {
   const token = ref<string>(getToken() || "") // 用户令牌
-  const roles = ref<string[]>([]) // 用户角色列表
+  const roles = ref<string[]>(getRoles() || []) // 用户角色列表
   const username = ref<string>(getUsername() || "") // 用户名
 
   const permissionStore = usePermissionStore()
   const tagsViewStore = useTagsViewStore()
   const settingsStore = useSettingsStore()
-
-  /** 设置角色数组 */
-  const setRoles = (value: string[]) => {
-    roles.value = value
-  }
 
   /** 登录 */
   const login = async ({ username, password, verificationCode, key }: LoginRequestData) => {
@@ -37,13 +40,9 @@ export const useUserStore = defineStore("user", () => {
     setUsername(username)
 
     // 设置角色，根据 permission 字段判断
-    if (data.permission === 1) {
-      // 如果 permission 是 1，设置为 admin 角色
-      roles.value = ["admin"]
-    } else {
-      // 如果 permission 是 0，设置为 user 角色
-      roles.value = ["user"]
-    }
+    const userRoles = data.permission === 1 ? ["admin"] : ["user"]
+    roles.value = userRoles
+    setRoles(userRoles)
 
     console.log(roles.value)
 
@@ -57,26 +56,24 @@ export const useUserStore = defineStore("user", () => {
   }
 
   /** 切换角色 */
-  const changeRoles = async (role: string) => {
-    /* const newToken = "token-" + role
-    token.value = newToken
-    setToken(newToken)
-    await getInfo()
-    permissionStore.setRoutes(roles.value)
-    resetRouter()
-    permissionStore.dynamicRoutes.forEach((item: RouteRecordRaw) => {
-      router.addRoute(item)
-    })
-    _resetTagsView() */
-  }
+  // const changeRoles = async (role: string) => {
+  //   /* const newToken = "token-" + role
+  //   token.value = newToken
+  //   setToken(newToken)
+  //   await getInfo()
+  //   permissionStore.setRoutes(roles.value)
+  //   resetRouter()
+  //   permissionStore.dynamicRoutes.forEach((item: RouteRecordRaw) => {
+  //     router.addRoute(item)
+  //   })
+  //   _resetTagsView() */
+  // }
 
   /** 登出 */
   const logout = () => {
-    removeToken()
-    removeUsername()
+    resetToken()
     token.value = ""
     username.value = ""
-    roles.value = []
     resetRouter()
     _resetTagsView()
   }
@@ -84,6 +81,8 @@ export const useUserStore = defineStore("user", () => {
   /** 重置 Token */
   const resetToken = () => {
     removeToken()
+    removeUsername()
+    removeRoles()
     token.value = ""
     roles.value = []
   }
@@ -96,7 +95,7 @@ export const useUserStore = defineStore("user", () => {
     }
   }
 
-  return { token, roles, username, setRoles, login, changeRoles, logout, resetToken, register }
+  return { token, roles, username, setRoles, login, logout, resetToken, register }
 })
 
 /** 在 setup 外使用 */

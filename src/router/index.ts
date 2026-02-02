@@ -252,22 +252,17 @@ const router = createRouter({
 
 export function resetRouter() {
   try {
-    // 获取当前所有路由
-    const currentRoutes = router.getRoutes()
-
-    // 移除所有动态添加的路由
-    currentRoutes.forEach((route) => {
-      if (route.name && route.meta?.roles?.length) {
-        router.removeRoute(route.name)
+    // 1. 移除所有动态路由
+    router.getRoutes().forEach((route) => {
+      const { name } = route
+      if (name && route.meta?.roles?.length) {
+        router.hasRoute(name) && router.removeRoute(name)
       }
     })
-
-    // 重新添加常驻路由
-    router.options.routes = [
-      ...(routeSettings.thirdLevelRouteCache ? flatMultiLevelRoutes(constantRoutes) : constantRoutes)
-    ]
-
-    console.log("路由已重置")
+    // 2. 重置路由配置为初始常驻路由
+    const initialRoutes = routeSettings.thirdLevelRouteCache ? flatMultiLevelRoutes(constantRoutes) : constantRoutes
+    router.options.routes = initialRoutes
+    console.log("路由重置完成")
   } catch (err) {
     console.error("路由重置失败:", err)
     window.location.reload()
