@@ -37,7 +37,6 @@ servers.value = [
     name: "GPU-Server-01",
     ip: "192.168.1.101",
     type: "GPU服务器",
-    source: [32, 128],
     status: "running",
     cpuCores: 32,
     memory: 128,
@@ -50,7 +49,6 @@ servers.value = [
     name: "CPU-Server-02",
     ip: "192.168.1.102",
     type: "CPU服务器",
-    source: [16, 64],
     status: "idle",
     cpuCores: 16,
     memory: 64,
@@ -63,7 +61,6 @@ servers.value = [
     name: "Storage-Server-03",
     ip: "192.168.1.103",
     type: "存储服务器",
-    source: [8, 32],
     status: "running",
     cpuCores: 8,
     memory: 32,
@@ -82,7 +79,8 @@ tasks.value = [
     serverName: "GPU-Server-01",
     type: "模型训练",
     priority: 1,
-    sourceNeed: [2, 10],
+    cpuCoreNeed: 4,
+    memoryNeed: 16,
     progress: 55,
     status: "running",
     startTime: "2024-06-20 08:30:00"
@@ -94,7 +92,8 @@ tasks.value = [
     serverName: "Storage-Server-03",
     type: "数据备份",
     priority: 2,
-    sourceNeed: [1, 5],
+    cpuCoreNeed: 2,
+    memoryNeed: 8,
     progress: 80,
     status: "running",
     startTime: "2024-06-20 09:15:00"
@@ -106,7 +105,8 @@ tasks.value = [
     serverName: "CPU-Server-02",
     type: "文件处理",
     priority: 3,
-    sourceNeed: [0.5, 2],
+    cpuCoreNeed: 1,
+    memoryNeed: 4,
     progress: 100,
     status: "completed",
     startTime: "2024-06-20 07:00:00"
@@ -118,7 +118,8 @@ tasks.value = [
     serverName: "GPU-Server-01",
     type: "模型评估",
     priority: 1,
-    sourceNeed: [2, 8],
+    cpuCoreNeed: 4,
+    memoryNeed: 16,
     progress: 0,
     status: "pending",
     startTime: "2024-06-20 12:00:00"
@@ -130,7 +131,8 @@ tasks.value = [
     serverName: "GPU-Server-01",
     type: "数据迁移",
     priority: 2,
-    sourceNeed: [1, 6],
+    cpuCoreNeed: 2,
+    memoryNeed: 8,
     progress: 0,
     status: "pending",
     startTime: "2024-06-20 12:30:00"
@@ -142,7 +144,8 @@ tasks.value = [
     serverName: "GPU-Server-01",
     type: "系统维护",
     priority: 3,
-    sourceNeed: [1, 4],
+    cpuCoreNeed: 1,
+    memoryNeed: 4,
     progress: 0,
     status: "pending",
     startTime: "2024-06-20 13:00:00"
@@ -355,7 +358,6 @@ const handleSubmitResource = async () => {
     // })
     const index = servers.value.findIndex((item) => item.id === currentServer.value!.id)
     if (index !== -1) {
-      servers.value[index].source = [serverResourceForm.value.cpuCores, serverResourceForm.value.memory]
       servers.value[index].cpuCores = serverResourceForm.value.cpuCores
       servers.value[index].memory = serverResourceForm.value.memory
 
@@ -478,8 +480,8 @@ const handleTabChange = (tab: TabPaneName) => {
 const openServerResourceDialog = (server: Server) => {
   currentServer.value = server
   serverResourceForm.value = {
-    cpuCores: server.source[0],
-    memory: server.source[1]
+    cpuCores: server.cpuCores,
+    memory: server.memory
   }
   showServerResourceDialog.value = true
 }
@@ -549,7 +551,7 @@ onMounted(() => {
           <el-table-column prop="ip" label="IP地址" width="130" />
           <el-table-column prop="type" label="类型" width="120" />
           <el-table-column prop="source" label="可用资源" width="120">
-            <template #default="{ row }"> {{ row.source[0] }} 核心 / {{ row.source[1] }} GB </template>
+            <template #default="{ row }"> {{ row.cpuCores }} 核心 / {{ row.memory }} GB </template>
           </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
@@ -663,7 +665,7 @@ onMounted(() => {
             </template>
           </el-table-column>
           <el-table-column prop="sourceNeed" label="资源需求" width="120">
-            <template #default="{ row }"> {{ row.sourceNeed[0] }} 核心 / {{ row.sourceNeed[1] }} GB </template>
+            <template #default="{ row }"> {{ row.cpuCoreNeed }} 核心 / {{ row.memoryNeed }} GB </template>
           </el-table-column>
           <el-table-column prop="status" label="任务状态" width="100">
             <template #default="{ row }">

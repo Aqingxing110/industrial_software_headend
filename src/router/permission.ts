@@ -22,7 +22,7 @@ router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStoreHook()
   const permissionStore = usePermissionStoreHook()
   const token = getToken()
-  console.log("token" + token)
+  console.log("当前路由：", to.path, "token：", token)
 
   //登出
   // userStore.logout()

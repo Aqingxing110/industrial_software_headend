@@ -556,49 +556,49 @@ const reconnectWebSocket = () => {
 }
 
 // 模拟随机变化的 vno 和 bridge 数据
-function generateRandomData() {
-  const light = Math.random() < 0.5 ? 0 : 1
-  const gate = Math.random() < 0.5 ? 0 : 1
-  const dePedest = Math.random() < 0.5 ? 0 : 1
-  const opened = Math.random() < 0.5 ? 0 : 1
-  const randomVno = Array.from({ length: 5 }, () => Math.floor(Math.random() * 100).toString())
-  // const randomBridge = `Bridge-${Math.floor(Math.random() * 10)}`
+// function generateRandomData() {
+//   const light = Math.random() < 0.5 ? 0 : 1
+//   const gate = Math.random() < 0.5 ? 0 : 1
+//   const dePedest = Math.random() < 0.5 ? 0 : 1
+//   const opened = Math.random() < 0.5 ? 0 : 1
+//   const randomVno = Array.from({ length: 5 }, () => Math.floor(Math.random() * 100).toString())
+//   // const randomBridge = `Bridge-${Math.floor(Math.random() * 10)}`
 
-  return { vno: randomVno, light, gate, dePedest, opened }
-}
-// 每隔3秒发送模拟数据
-let intervalId
+//   return { vno: randomVno, light, gate, dePedest, opened }
+// }
+// // 每隔3秒发送模拟数据
+// let intervalId
 
-function startInterval() {
-  // 若已有定时器存在，先清除旧定时器（避免重复创建）
-  if (intervalId) {
-    clearInterval(intervalId)
-  }
+// function startInterval() {
+//   // 若已有定时器存在，先清除旧定时器（避免重复创建）
+//   if (intervalId) {
+//     clearInterval(intervalId)
+//   }
 
-  // 创建新定时器，并将ID赋值给变量
-  intervalId = setInterval(() => {
-    const randomData = generateRandomData()
-    console.log("每隔3秒发送模拟数据")
+//   // 创建新定时器，并将ID赋值给变量
+//   intervalId = setInterval(() => {
+//     const randomData = generateRandomData()
+//     console.log("每隔3秒发送模拟数据")
 
-    if (socket) {
-      const simulatedEvent = new MessageEvent("message", {
-        data: JSON.stringify({
-          type: "reminder",
-          time: 0,
-          state: 1,
-          light: randomData.light,
-          gate: randomData.gate,
-          deVessel: 1,
-          dePedest: randomData.dePedest,
-          opened: randomData.opened,
-          vno: randomData.vno,
-          bridge: "MB1"
-        })
-      })
-      socket.dispatchEvent(simulatedEvent)
-    }
-  }, 3000)
-}
+//     if (socket) {
+//       const simulatedEvent = new MessageEvent("message", {
+//         data: JSON.stringify({
+//           type: "reminder",
+//           time: 0,
+//           state: 1,
+//           light: randomData.light,
+//           gate: randomData.gate,
+//           deVessel: 1,
+//           dePedest: randomData.dePedest,
+//           opened: randomData.opened,
+//           vno: randomData.vno,
+//           bridge: "MB1"
+//         })
+//       })
+//       socket.dispatchEvent(simulatedEvent)
+//     }
+//   }, 3000)
+// }
 
 relinkws()
 // 控制弹窗的显示状态
