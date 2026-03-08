@@ -250,15 +250,21 @@ const router = createRouter({
   }
 } */
 
+const removeRouteTree = (routes: RouteRecordRaw[]) => {
+  routes.forEach((route) => {
+    if (route.children?.length) {
+      removeRouteTree(route.children)
+    }
+    if (route.name && router.hasRoute(route.name)) {
+      router.removeRoute(route.name)
+    }
+  })
+}
+
 export function resetRouter() {
   try {
-    // 1. 移除所有动态路由
-    router.getRoutes().forEach((route) => {
-      const { name } = route
-      if (name && route.meta?.roles?.length) {
-        router.hasRoute(name) && router.removeRoute(name)
-      }
-    })
+    // 1. 递归移除整棵动态路由树，避免父路由残留导致重新登录后子路由无法恢复
+    removeRouteTree(asyncRoutes)
     // 2. 重置路由配置为初始常驻路由
     const initialRoutes = routeSettings.thirdLevelRouteCache ? flatMultiLevelRoutes(constantRoutes) : constantRoutes
     router.options.routes = initialRoutes

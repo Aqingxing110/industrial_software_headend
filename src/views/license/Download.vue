@@ -7,6 +7,7 @@ import {
   downloadLicenseFileMock,
   fillRequestDisplayNames,
   getLicenseRequestsApi,
+  getLicenseRequestsByUserIdApi,
   getLicenseRequestsMock,
   getModuleCategoriesApi,
   getModuleCategoriesMock,
@@ -15,6 +16,27 @@ import {
 } from "@/api/license"
 import { LICENSE_REQUEST_STATUS_OPTIONS } from "@/constants/license"
 import { useUserStoreHook } from "@/store/modules/user"
+
+const TEXT = {
+  title: "\u8bb8\u53ef\u8bc1\u4e0b\u8f7d",
+  subtitle:
+    "\u67e5\u770b\u5f53\u524d\u7528\u6237\u7684\u8bb8\u53ef\u8bc1\u7533\u8bf7\u8bb0\u5f55\uff0c\u5df2\u5ba1\u6279\u7684\u8bb0\u5f55\u53ef\u4ee5\u76f4\u63a5\u4e0b\u8f7d\u8bc1\u4e66\u6587\u4ef6\u3002",
+  requestId: "\u7533\u8bf7\u7f16\u53f7",
+  categoryName: "\u6a21\u5757\u7c7b\u522b",
+  moduleName: "\u6a21\u5757\u540d\u79f0",
+  validPeriod: "\u4f7f\u7528\u671f\u9650",
+  usageCount: "\u4f7f\u7528\u6b21\u6570",
+  status: "\u72b6\u6001",
+  licenseNo: "\u8bb8\u53ef\u8bc1\u7f16\u53f7",
+  createdAt: "\u7533\u8bf7\u65f6\u95f4",
+  action: "\u64cd\u4f5c",
+  download: "\u4e0b\u8f7d",
+  missingUserId:
+    "\u5f53\u524d\u767b\u5f55\u6001\u7f3a\u5c11 userId\uff0c\u5df2\u4e34\u65f6\u6309\u7528\u6237\u540d\u8fc7\u6ee4\u7533\u8bf7\u8bb0\u5f55\u3002\u5efa\u8bae\u91cd\u65b0\u767b\u5f55\u540e\u91cd\u8bd5\u3002",
+  loadFailed:
+    "\u52a0\u8f7d\u8bb8\u53ef\u8bc1\u7533\u8bf7\u8bb0\u5f55\u5931\u8d25\uff0c\u5df2\u5207\u6362\u5230\u672c\u5730\u6a21\u62df\u6570\u636e\u3002",
+  downloadFailed: "\u4e0b\u8f7d\u5931\u8d25"
+}
 
 const userStore = useUserStoreHook()
 
@@ -40,14 +62,18 @@ const statusTypeMap: Record<LicenseRequestItem["status"], "warning" | "success" 
   REJECTED: "danger"
 }
 
+const isAdmin = computed(() => userStore.roles.includes("admin"))
 const currentUser = computed(() => userStore.username || "")
+const currentUserId = computed(() => (typeof userStore.userId === "number" ? userStore.userId : null))
+
+const getDownloadStartedMessage = (label: string) => `\u5df2\u5f00\u59cb\u4e0b\u8f7d\u8bb8\u53ef\u8bc1\uff1a${label}`
 
 const loadCatalog = async () => {
   let categories: { categoryId: string }[] = []
   try {
     const response = await getModuleCategoriesApi()
     categories = response.data
-  } catch (error) {
+  } catch {
     const mockResponse = await getModuleCategoriesMock()
     categories = mockResponse.data
   }
@@ -64,9 +90,13 @@ const loadCatalog = async () => {
 }
 
 const applyUserFilterAndPage = (rows: LicenseRequestItem[]) => {
-  const filteredRows = currentUser.value ? rows.filter((item) => item.userName === currentUser.value) : rows
-  total.value = filteredRows.length
+  const filteredRows = isAdmin.value
+    ? rows
+    : currentUser.value
+    ? rows.filter((item) => item.userName === currentUser.value)
+    : []
 
+  total.value = filteredRows.length
   const start = (query.value.pageNum - 1) * query.value.pageSize
   const end = start + query.value.pageSize
   requests.value = filteredRows.slice(start, end)
@@ -76,16 +106,35 @@ const fetchRequests = async () => {
   loading.value = true
   errorMessage.value = ""
   try {
+    if (isAdmin.value) {
+      const response = await getLicenseRequestsApi({
+        page: query.value.pageNum,
+        size: query.value.pageSize
+      })
+      requests.value = fillRequestDisplayNames(response.data.records)
+      total.value = response.data.total
+      return
+    }
+
+    if (currentUserId.value !== null) {
+      const response = await getLicenseRequestsByUserIdApi(currentUserId.value, {
+        page: query.value.pageNum,
+        size: query.value.pageSize
+      })
+      requests.value = fillRequestDisplayNames(response.data.records)
+      total.value = response.data.total
+      return
+    }
+
+    errorMessage.value = TEXT.missingUserId
     const response = await getLicenseRequestsApi({
-      status: "APPROVED",
       page: 1,
       size: 1000
     })
     applyUserFilterAndPage(fillRequestDisplayNames(response.data.records))
-  } catch (error) {
-    errorMessage.value = "加载许可证列表失败，已切换到本地模拟数据。"
+  } catch {
+    errorMessage.value = TEXT.loadFailed
     const mockResponse = await getLicenseRequestsMock({
-      status: "APPROVED",
       page: 1,
       size: 1000
     })
@@ -111,8 +160,8 @@ const handleDownload = async (row: LicenseRequestItem) => {
     link.download = filename
     link.click()
     window.URL.revokeObjectURL(url)
-    ElMessage.success(`已开始下载许可证：${label}`)
-  } catch (error) {
+    ElMessage.success(getDownloadStartedMessage(label))
+  } catch {
     try {
       const blob = await downloadLicenseFileMock(row.requestId)
       const url = window.URL.createObjectURL(blob)
@@ -121,9 +170,9 @@ const handleDownload = async (row: LicenseRequestItem) => {
       link.download = filename
       link.click()
       window.URL.revokeObjectURL(url)
-      ElMessage.success(`已开始下载许可证：${label}`)
+      ElMessage.success(getDownloadStartedMessage(label))
     } catch {
-      ElMessage.error("下载失败")
+      ElMessage.error(TEXT.downloadFailed)
     }
   }
 }
@@ -138,36 +187,36 @@ onMounted(async () => {
   <div class="license-download-page">
     <div class="page-header">
       <div>
-        <h2 class="title">许可证下载</h2>
-        <p class="subtitle">查看当前用户已分配的许可证，并下载证书文件。</p>
+        <h2 class="title">{{ TEXT.title }}</h2>
+        <p class="subtitle">{{ TEXT.subtitle }}</p>
       </div>
     </div>
 
     <el-alert v-if="errorMessage" :title="errorMessage" type="warning" show-icon class="error-alert" />
 
     <el-table :data="requests" style="width: 100%" v-loading="loading" row-key="requestId">
-      <el-table-column prop="requestId" label="申请编号" min-width="140" />
-      <el-table-column prop="categoryName" label="模块类别" min-width="120" />
-      <el-table-column prop="moduleName" label="模块名称" min-width="140" />
-      <el-table-column label="使用期限" min-width="180">
+      <el-table-column prop="requestId" :label="TEXT.requestId" min-width="140" />
+      <el-table-column prop="categoryName" :label="TEXT.categoryName" min-width="120" />
+      <el-table-column prop="moduleName" :label="TEXT.moduleName" min-width="140" />
+      <el-table-column :label="TEXT.validPeriod" min-width="180">
         <template #default="{ row }">{{ row.validFrom }} ~ {{ row.validTo }}</template>
       </el-table-column>
-      <el-table-column prop="usageCount" label="使用次数" min-width="100" />
-      <el-table-column label="状态" min-width="110">
+      <el-table-column prop="usageCount" :label="TEXT.usageCount" min-width="100" />
+      <el-table-column :label="TEXT.status" min-width="110">
         <template #default="{ row }">
           <el-tag :type="statusTypeMap[row.status]">
             {{ statusLabelMap[row.status] || row.status }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="licenseNo" label="许可证编号" min-width="160">
+      <el-table-column prop="licenseNo" :label="TEXT.licenseNo" min-width="160">
         <template #default="{ row }">{{ row.licenseNo || "-" }}</template>
       </el-table-column>
-      <el-table-column prop="createdAt" label="申请时间" min-width="120" />
-      <el-table-column label="操作" width="140">
+      <el-table-column prop="createdAt" :label="TEXT.createdAt" min-width="120" />
+      <el-table-column :label="TEXT.action" width="140">
         <template #default="{ row }">
           <el-button v-if="row.status === 'APPROVED'" size="small" type="primary" @click="handleDownload(row)">
-            下载
+            {{ TEXT.download }}
           </el-button>
           <span v-else class="muted">--</span>
         </template>

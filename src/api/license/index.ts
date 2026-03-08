@@ -389,6 +389,31 @@ export const getLicenseRequestsApi = async (params: LicenseRequestQuery = {}) =>
   }
 }
 
+export const getLicenseRequestsByUserIdApi = async (userId: number, params: LicenseRequestQuery = {}) => {
+  const queryParams: LicenseRequestQuery = {
+    page: params.page ?? 1,
+    size: params.size ?? 10
+  }
+
+  if (params.moduleKeyword && params.moduleKeyword.trim()) {
+    queryParams.moduleKeyword = params.moduleKeyword.trim()
+  }
+  if (params.status) {
+    queryParams.status = params.status
+  }
+
+  const response = await request<ApiResponse<PageData<Record<string, unknown>>>>({
+    url: `/license/requests/user/${userId}`,
+    method: "get",
+    params: queryParams
+  })
+
+  return {
+    ...response,
+    data: normalizeRequestPage(response.data)
+  }
+}
+
 export const createLicenseRequestApi = (payload: LicenseRequestPayload) =>
   request<ApiResponse<LicenseRequestItem>>({
     url: "/license/requests",
