@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue"
+import { ref, onMounted, reactive } from "vue"
 import {
   ElTable,
   ElTableColumn,
@@ -12,14 +12,16 @@ import {
   ElMessageBox
 } from "element-plus"
 import { Server, Task } from "@/api/monitoring/types/task-server"
-// import {
-//   getTasksRunning,
-//   getServers,
-//   changeServerResource,
-//   changeTaskPriority,
-//   allocateTaskResources,
-//   allocateServerResources
-// } from "@/api/monitoring"
+import {
+  synchronousCloudServer,
+  getServers,
+  getAdjustableSpecifications,
+  getTasksRunning,
+  changeServerResource,
+  changeTaskPriority
+  // allocateTaskResources,
+  // allocateServerResources
+} from "@/api/monitoring"
 // ---------- 响应式数据 ----------
 const servers = ref<Server[]>([])
 const totalServers = ref(0)
@@ -30,136 +32,13 @@ const tasks = ref<Task[]>([])
 const totalTasks = ref(0)
 const isTaskLoading = ref(false)
 
-// 初始化模拟数据
-servers.value = [
-  {
-    id: 1,
-    name: "GPU-Server-01",
-    ip: "192.168.1.101",
-    type: "GPU服务器",
-    status: "running",
-    cpuCores: 32,
-    memory: 128,
-    cpuUsage: 65,
-    memoryUsage: 70,
-    lastOnline: "2024-06-20 10:15:00"
-  },
-  {
-    id: 2,
-    name: "CPU-Server-02",
-    ip: "192.168.1.102",
-    type: "CPU服务器",
-    status: "idle",
-    cpuCores: 16,
-    memory: 64,
-    cpuUsage: 20,
-    memoryUsage: 30,
-    lastOnline: "2024-06-20 09:50:00"
-  },
-  {
-    id: 3,
-    name: "Storage-Server-03",
-    ip: "192.168.1.103",
-    type: "存储服务器",
-    status: "running",
-    cpuCores: 8,
-    memory: 32,
-    cpuUsage: 45,
-    memoryUsage: 50,
-    lastOnline: "2024-06-20 11:00:00"
-  }
-]
-
-// 任务模拟数据
-tasks.value = [
-  {
-    id: 1,
-    name: "模型训练任务A",
-    serverId: 1,
-    serverName: "GPU-Server-01",
-    type: "模型训练",
-    priority: 1,
-    cpuCoreNeed: 4,
-    memoryNeed: 16,
-    progress: 55,
-    status: "running",
-    startTime: "2024-06-20 08:30:00"
-  },
-  {
-    id: 2,
-    name: "数据备份任务B",
-    serverId: 3,
-    serverName: "Storage-Server-03",
-    type: "数据备份",
-    priority: 2,
-    cpuCoreNeed: 2,
-    memoryNeed: 8,
-    progress: 80,
-    status: "running",
-    startTime: "2024-06-20 09:15:00"
-  },
-  {
-    id: 3,
-    name: "日志清理任务C",
-    serverId: 2,
-    serverName: "CPU-Server-02",
-    type: "文件处理",
-    priority: 3,
-    cpuCoreNeed: 1,
-    memoryNeed: 4,
-    progress: 100,
-    status: "completed",
-    startTime: "2024-06-20 07:00:00"
-  },
-  {
-    id: 4,
-    name: "模型评估任务D",
-    serverId: 1,
-    serverName: "GPU-Server-01",
-    type: "模型评估",
-    priority: 1,
-    cpuCoreNeed: 4,
-    memoryNeed: 16,
-    progress: 0,
-    status: "pending",
-    startTime: "2024-06-20 12:00:00"
-  },
-  {
-    id: 5,
-    name: "数据迁移任务E",
-    serverId: 1,
-    serverName: "GPU-Server-01",
-    type: "数据迁移",
-    priority: 2,
-    cpuCoreNeed: 2,
-    memoryNeed: 8,
-    progress: 0,
-    status: "pending",
-    startTime: "2024-06-20 12:30:00"
-  },
-  {
-    id: 6,
-    name: "系统更新任务F",
-    serverId: 1,
-    serverName: "GPU-Server-01",
-    type: "系统维护",
-    priority: 3,
-    cpuCoreNeed: 1,
-    memoryNeed: 4,
-    progress: 0,
-    status: "pending",
-    startTime: "2024-06-20 13:00:00"
-  }
-]
-
 // 搜索 / 筛选（服务器）
 const searchQuery = ref("")
-const statusFilter = ref("all")
-const typeFilter = ref("all")
+const statusFilter = ref("")
 
 // 搜索 / 筛选（任务）
 const taskSearchQuery = ref("")
-const taskStatusFilter = ref("all")
+const taskStatusFilter = ref("")
 const taskServerFilter = ref(0)
 
 // 分页（服务器）
@@ -176,10 +55,12 @@ const activeTab = ref("server")
 // 服务器资源调整弹窗相关
 const showServerResourceDialog = ref(false)
 const currentServer = ref<Server | null>(null)
-const serverResourceForm = ref({
-  cpuCores: 0,
+const serverResourceForm = reactive({
+  specification: "",
+  cpuCore: 0,
   memory: 0
 })
+const specifications = ref<{ specification: string; cpuCore: number; memory: number }[]>([])
 
 // 任务优先级调整弹窗相关
 const showTaskPriorityDialog = ref(false)
@@ -195,19 +76,20 @@ const isAllocating = ref(false)
 // 服务器状态处理
 const getStatusText = (status: string) => {
   const map: Record<string, string> = {
-    running: "运行中",
-    idle: "空闲",
-    offline: "离线",
-    maintenance: "维护中"
+    Running: "运行中",
+    Stopped: "未运行",
+    Starting: "启动中",
+    Stopping: "停止中",
+    Pending: "待处理"
   }
   return map[status] || "未知"
 }
 
 const getStatusTagType = (status: string) => {
-  if (status === "running") return "success"
-  if (status === "idle") return ""
-  if (status === "offline") return "danger"
-  if (status === "maintenance") return "info"
+  if (status === "Running") return "success"
+  if (status === "Starting" || status === "Stopping") return "warning"
+  if (status === "Stopped") return "danger"
+  if (status === "Pending") return "info"
   return ""
 }
 
@@ -263,34 +145,20 @@ const validateSelection = (): boolean => {
 const fetchServers = async () => {
   isLoading.value = true
   try {
-    // const response = await getServers({
-    //   pageNum: currentPage.value,
-    //   pageSize: pageSize.value,
-    //   keyword: searchQuery.value,
-    //   status: statusFilter.value,
-    //   type: typeFilter.value
-    // })
-    // if (response.code === 200) {
-    //   servers.value = response.data.records
-    //   totalServers.value = response.data.total
-    // } else {
-    //   ElMessage.error("获取服务器列表失败：" + response.message)
-    // }
-    // 模拟数据刷新
-    if (servers.value.length) {
-      servers.value = servers.value.map((server) => ({
-        ...server,
-        cpuUsage: Math.floor(Math.random() * 100),
-        memoryUsage: Math.floor(Math.random() * 100)
-      }))
-    }
-    totalServers.value = servers.value.length
-    selectedServers.value = []
-  } catch (e) {
-    console.error("获取服务器列表失败:", e)
+    const response = await getServers({
+      pageNum: currentPage.value,
+      pageSize: pageSize.value,
+      keyword: searchQuery.value || undefined,
+      status: statusFilter.value || undefined
+    })
+    servers.value = response.data.records
+    totalServers.value = response.data.total
+  } catch (e: any) {
+    console.error("获取服务器列表失败:", e.message || e)
     ElMessage.error("获取服务器列表失败")
   } finally {
     isLoading.value = false
+    selectedServers.value = []
   }
 }
 
@@ -298,80 +166,36 @@ const fetchServers = async () => {
 const fetchTasks = async () => {
   isTaskLoading.value = true
   try {
-    // const response = await getTasksRunning({
-    //   pageNum: taskCurrentPage.value,
-    //   pageSize: taskPageSize.value,
-    //   keyword: taskSearchQuery.value,
-    //   status: taskStatusFilter.value,
-    //   serverId: taskServerFilter.value
-    // })
-    // if (response.code === 200) {
-    //   tasks.value = sortTasks(response.data.records)
-    //   totalTasks.value = response.data.total
-    // } else {
-    //   ElMessage.error("获取任务列表失败：" + response.message)
-    // }
-    // 模拟数据刷新（开发阶段）
-    let taskList = [...tasks.value] // 模拟从后端获取的原始数据
-    if (taskList.length) {
-      taskList = taskList.map((task) => {
-        if (task.status === "running") {
-          return {
-            ...task,
-            progress: Math.min(100, task.progress + Math.floor(Math.random() * 5))
-          }
-        }
-        return task
-      })
-    }
-
-    // 关键：对后端返回的原始任务数据排序
-    tasks.value = sortTasks(taskList)
-    totalTasks.value = tasks.value.length
-    selectedTasks.value = []
-
-    // 真实后端对接时的写法：
-    // const resp = await $http.get('/api/tasks', {
-    //   params: { page: taskCurrentPage.value, pageSize: taskPageSize.value, ...其他筛选参数 }
-    // })
-    // tasks.value = sortTasks(resp.data.list) // 对后端数据排序
-    // totalTasks.value = resp.data.total
-  } catch (e) {
-    ElMessage.error("获取任务列表失败")
+    const response = await getTasksRunning({
+      pageNum: taskCurrentPage.value,
+      pageSize: taskPageSize.value,
+      keyword: taskSearchQuery.value || undefined,
+      status: taskStatusFilter.value || undefined,
+      serverId: taskServerFilter.value || undefined
+    })
+    tasks.value = sortTasks(response.data.records)
+    totalTasks.value = response.data.total
+  } catch (e: any) {
+    ElMessage.error("获取任务列表失败：" + e.message)
   } finally {
+    selectedTasks.value = []
     isTaskLoading.value = false
   }
 }
 
 // 调整服务器可用资源
 const handleSubmitResource = async () => {
-  if (!currentServer.value) return
+  if (!currentServer.value) return ElMessage.warning("未选择服务器")
 
-  if (serverResourceForm.value.cpuCores < 1 || serverResourceForm.value.memory < 1) {
-    ElMessage.warning("CPU核心数和内存需大于0")
-    return
-  }
   try {
-    // await changeServerResource(currentServer.value.id, {
-    //   cpuCores: serverResourceForm.value.cpuCores,
-    //   memory: serverResourceForm.value.memory
-    // })
-    const index = servers.value.findIndex((item) => item.id === currentServer.value!.id)
-    if (index !== -1) {
-      servers.value[index].cpuCores = serverResourceForm.value.cpuCores
-      servers.value[index].memory = serverResourceForm.value.memory
-
-      ElMessage.success("服务器资源调整成功")
-      showServerResourceDialog.value = false
-      currentServer.value = null
-    }
-    fetchServers()
-  } catch (err) {
-    ElMessage.error("服务器资源调整失败")
-    console.error(err)
-  } finally {
-    currentServer.value = null
+    const res = await changeServerResource(currentServer.value.id, serverResourceForm.specification)
+    ElMessage.success(res.message || "服务器资源调整成功")
     showServerResourceDialog.value = false
+    currentServer.value = null
+    fetchServers()
+  } catch (err: any) {
+    ElMessage.error(err.message || "服务器资源调整失败")
+    console.error(err)
   }
 }
 
@@ -379,7 +203,7 @@ const handleSubmitResource = async () => {
 const handleSubmitPriority = async () => {
   if (!currentTask.value) return
   try {
-    // await changeTaskPriority(currentTask.value.id, taskPriorityForm.value)
+    await changeTaskPriority(currentTask.value.id, taskPriorityForm.value)
     const index = tasks.value.findIndex((item) => item.id === currentTask.value!.id)
     if (index !== -1) {
       tasks.value[index].priority = taskPriorityForm.value
@@ -453,15 +277,14 @@ const handleTaskPageChange = (page: number) => {
 }
 const resetFilters = () => {
   searchQuery.value = ""
-  statusFilter.value = "all"
-  typeFilter.value = "all"
+  statusFilter.value = ""
   currentPage.value = 1
   fetchServers()
 }
 // 重置任务筛选
 const resetTaskFilters = () => {
   taskSearchQuery.value = ""
-  taskStatusFilter.value = "all"
+  taskStatusFilter.value = ""
   taskServerFilter.value = 0
   taskCurrentPage.value = 1
   fetchTasks()
@@ -477,13 +300,34 @@ const handleTabChange = (tab: TabPaneName) => {
 }
 
 // 打开服务器资源调整弹窗
-const openServerResourceDialog = (server: Server) => {
+const openServerResourceDialog = async (server: Server) => {
   currentServer.value = server
-  serverResourceForm.value = {
-    cpuCores: server.cpuCores,
-    memory: server.memory
+  specifications.value = []
+  try {
+    const res = await getAdjustableSpecifications(server.id)
+    specifications.value = res.data
+    specifications.value = specifications.value.map((item) => ({
+      ...item,
+      memory: item.memory
+    }))
+    Object.assign(serverResourceForm, {
+      specification: server.specification,
+      cpuCore: server.cpuCores,
+      memory: server.memory
+    })
+    showServerResourceDialog.value = true
+  } catch (err: any) {
+    ElMessage.error(err.message || "获取可调整规格异常，请稍后重试")
+    showServerResourceDialog.value = false
   }
-  showServerResourceDialog.value = true
+}
+
+const onSpecChange = (specValue: string) => {
+  const selectSpec = specifications.value.find((item) => item.specification === specValue)
+  if (selectSpec) {
+    serverResourceForm.cpuCore = selectSpec.cpuCore
+    serverResourceForm.memory = selectSpec.memory
+  }
 }
 
 // 打开任务优先级调整弹窗
@@ -495,6 +339,7 @@ const openTaskPriorityDialog = (task: Task) => {
 
 // ---------- 初始化 ----------
 onMounted(() => {
+  synchronousCloudServer()
   fetchServers()
   fetchTasks()
 })
@@ -519,25 +364,17 @@ onMounted(() => {
 
         <div class="filter-container">
           <el-select v-model="statusFilter" placeholder="状态筛选" clearable>
-            <el-option label="全部状态" value="all" />
-            <el-option label="运行中" value="running" />
-            <el-option label="空闲" value="idle" />
-            <el-option label="离线" value="offline" />
-            <el-option label="维护中" value="maintenance" />
+            <el-option label="全部状态" value="" />
+            <el-option label="运行中" value="Running" />
+            <el-option label="未运行" value="Stopped" />
+            <el-option label="启动中" value="Starting" />
+            <el-option label="停止中" value="Stopping" />
+            <el-option label="待处理" value="Pending" />
           </el-select>
-
-          <el-select v-model="typeFilter" placeholder="类型筛选" clearable>
-            <el-option label="全部类型" value="all" />
-            <el-option label="GPU服务器" value="GPU服务器" />
-            <el-option label="CPU服务器" value="CPU服务器" />
-            <el-option label="存储服务器" value="存储服务器" />
-          </el-select>
-
           <el-button @click="resetFilters">重置筛选</el-button>
         </div>
 
         <!-- 服务器列表 -->
-        <!-- 服务器列表：新增勾选列 -->
         <el-table
           :data="servers"
           :style="{ width: '100%' }"
@@ -545,13 +382,12 @@ onMounted(() => {
           @selection-change="(val) => (selectedServers = val)"
           ref="serverTableRef"
         >
-          <!-- 新增：批量选择列 -->
           <el-table-column type="selection" width="55" />
           <el-table-column prop="name" label="服务器名称" min-width="150" />
           <el-table-column prop="ip" label="IP地址" width="130" />
-          <el-table-column prop="type" label="类型" width="120" />
+          <el-table-column prop="specification" label="服务器规格" width="150" />
           <el-table-column prop="source" label="可用资源" width="120">
-            <template #default="{ row }"> {{ row.cpuCores }} 核心 / {{ row.memory }} GB </template>
+            <template #default="{ row }"> {{ row.cpuCores }} 核 / {{ row.memory }} GB </template>
           </el-table-column>
           <el-table-column prop="status" label="状态" width="100">
             <template #default="{ row }">
@@ -627,7 +463,7 @@ onMounted(() => {
 
         <div class="filter-container">
           <el-select v-model="taskStatusFilter" placeholder="任务状态筛选" clearable>
-            <el-option label="全部状态" value="all" />
+            <el-option label="全部状态" value="" />
             <el-option label="执行中" value="running" />
             <el-option label="已完成" value="completed" />
             <el-option label="失败" value="failed" />
@@ -710,35 +546,28 @@ onMounted(() => {
     </el-tabs>
 
     <!-- 服务器可用资源调整弹窗 -->
-    <el-dialog
-      title="调整服务器可用资源"
-      v-model="showServerResourceDialog"
-      width="400px"
-      @close="currentServer = null"
-    >
+    <el-dialog v-model="showServerResourceDialog" title="调整服务器规格" width="400px">
       <el-form :model="serverResourceForm" label-width="100px">
-        <el-form-item label="CPU核心数" prop="cpuCores">
-          <el-input-number
-            v-model="serverResourceForm.cpuCores"
-            :min="1"
-            :step="1"
-            placeholder="请输入CPU核心数"
-            style="width: 100%"
-          />
+        <el-form-item label="服务器规格">
+          <el-select v-model="serverResourceForm.specification" placeholder="请选择可调整规格" @change="onSpecChange">
+            <el-option
+              v-for="item in specifications"
+              :key="item.specification"
+              :label="item.specification"
+              :value="item.specification"
+            />
+          </el-select>
         </el-form-item>
-        <el-form-item label="内存(GB)" prop="memory">
-          <el-input-number
-            v-model="serverResourceForm.memory"
-            :min="1"
-            :step="1"
-            placeholder="请输入内存大小"
-            style="width: 100%"
-          />
+        <el-form-item label="CPU核心数">
+          <el-input v-model="serverResourceForm.cpuCore" disabled />
+        </el-form-item>
+        <el-form-item label="内存大小(GB)">
+          <el-input v-model="serverResourceForm.memory" disabled />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showServerResourceDialog = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitResource">确定</el-button>
+        <el-button type="primary" @click="handleSubmitResource">确认调整</el-button>
       </template>
     </el-dialog>
 

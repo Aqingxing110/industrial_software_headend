@@ -34,12 +34,27 @@ import { ElMessage } from "element-plus"
 import { QuestionFilled } from "@element-plus/icons-vue"
 import type { Component } from "@/api/installer/types"
 import { getComponents } from "@/api/installer"
+import { getLicenseRequestsApi } from "@/api/license"
 
 // 响应式数据
 const components = ref<Component[]>([])
 // 加载状态
 const loading = ref(false)
+// 是否有对应许可证申请
+const hasLicenseApplication = ref(false)
+// 标记是否已弹出过许可证警告
+const licenseWarned = ref(false)
 
+const getLicenseStatus = async () => {
+  try {
+    //TODO: const res = await getLicenseRequestsApi({ status: "APPROVED" })
+    // hasLicenseApplication.value = res.data.total > 0
+  } catch (err) {
+    ElMessage.error("获取许可证状态失败")
+    console.error("获取许可证状态失败：", err)
+    hasLicenseApplication.value = false
+  }
+}
 // 接口请求
 const getComponentList = async () => {
   if (loading.value) return
@@ -61,6 +76,10 @@ const getComponentList = async () => {
 
 // 安装组件
 const handleInstallComponent = async (row: Component) => {
+  if (!hasLicenseApplication.value) {
+    ElMessage.warning("您目前没有对应有效的许可证申请，请前往许可证管理页面查看，申请联系xx邮箱")
+    return
+  }
   if (row.address && row.address.trim()) {
     window.open(row.address, "_blank")
   } else {
@@ -69,8 +88,13 @@ const handleInstallComponent = async (row: Component) => {
 }
 
 // 页面加载时获取组件列表
-onMounted(() => {
-  getComponentList()
+onMounted(async () => {
+  await getComponentList()
+  await getLicenseStatus()
+  if (!hasLicenseApplication.value && !licenseWarned.value) {
+    ElMessage.warning("您目前没有对应有效的许可证申请，请前往许可证管理页面查看，申请联系xx邮箱")
+    licenseWarned.value = true
+  }
 })
 </script>
 

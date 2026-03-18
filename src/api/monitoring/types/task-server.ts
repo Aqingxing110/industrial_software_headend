@@ -2,13 +2,12 @@ interface Server {
   id: number
   name: string
   ip: string
-  type: string
-  status: "running" | "idle" | "offline" | "maintenance"
+  specification: string
+  status: "Running" | "Stopped" | "Starting" | "Stopping" | "Pending"
   cpuCores: number
   memory: number
   cpuUsage: number
   memoryUsage: number
-  lastOnline: string
 }
 
 interface Task {
