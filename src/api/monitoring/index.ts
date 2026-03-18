@@ -51,11 +51,11 @@ function changeServerResource(serverId: number, specification: string) {
 }
 
 // 修改任务优先级
-function changeTaskPriority(taskId: number, priority: number) {
+function changeTaskPriority(taskId: string, priority: number) {
   return request<ApiResponse<void>>({
     url: `/monitoring/tasks/${taskId}/priority`,
     method: "put",
-    data: { priority }
+    params: { priority }
   })
 }
 

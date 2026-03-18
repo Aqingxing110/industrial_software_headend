@@ -11,8 +11,8 @@ interface Server {
 }
 
 interface Task {
-  id: number
-  name: string
+  taskId: string
+  taskName: string
   serverId: number
   serverName: string
   type: string

@@ -203,8 +203,8 @@ const handleSubmitResource = async () => {
 const handleSubmitPriority = async () => {
   if (!currentTask.value) return
   try {
-    await changeTaskPriority(currentTask.value.id, taskPriorityForm.value)
-    const index = tasks.value.findIndex((item) => item.id === currentTask.value!.id)
+    await changeTaskPriority(currentTask.value.taskId, taskPriorityForm.value)
+    const index = tasks.value.findIndex((item) => item.taskId === currentTask.value!.taskId)
     if (index !== -1) {
       tasks.value[index].priority = taskPriorityForm.value
       ElMessage.success("任务优先级调整成功")
@@ -490,7 +490,7 @@ onMounted(() => {
         >
           <!-- 新增：批量选择列 -->
           <el-table-column type="selection" width="55" />
-          <el-table-column prop="name" label="任务名称" min-width="180" />
+          <el-table-column prop="taskName" label="任务名称" min-width="180" />
           <el-table-column prop="serverName" label="所属服务器" min-width="150" />
           <el-table-column prop="type" label="任务类型" width="120" />
           <el-table-column prop="priority" label="优先级" width="100">

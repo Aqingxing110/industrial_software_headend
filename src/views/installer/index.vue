@@ -34,8 +34,10 @@ import { ElMessage } from "element-plus"
 import { QuestionFilled } from "@element-plus/icons-vue"
 import type { Component } from "@/api/installer/types"
 import { getComponents } from "@/api/installer"
-import { getLicenseRequestsApi } from "@/api/license"
+import { getLicenseRequestsByUserIdApi } from "@/api/license"
+import { useUserStore } from "@/store/modules/user"
 
+const userStore = useUserStore()
 // 响应式数据
 const components = ref<Component[]>([])
 // 加载状态
@@ -47,8 +49,8 @@ const licenseWarned = ref(false)
 
 const getLicenseStatus = async () => {
   try {
-    //TODO: const res = await getLicenseRequestsApi({ status: "APPROVED" })
-    // hasLicenseApplication.value = res.data.total > 0
+    const res = await getLicenseRequestsByUserIdApi(userStore.userId!, { status: "APPROVED" })
+    hasLicenseApplication.value = res.data.total > 0
   } catch (err) {
     ElMessage.error("获取许可证状态失败")
     console.error("获取许可证状态失败：", err)
