@@ -1,4 +1,5 @@
 import { request } from "@/utils/service"
+import { LICENSE_MODULES, LICENSE_MODULE_CATEGORIES } from "@/constants/license-catalog"
 import type {
   ApiResponse,
   LicenseModule,
@@ -156,19 +157,9 @@ const normalizeRequestPage = (rawData: unknown): PageData<LicenseRequestItem> =>
   }
 }
 
-const mockCategories: ModuleCategory[] = [
-  { categoryId: "pre", name: "前处理" },
-  { categoryId: "solver", name: "求解器" },
-  { categoryId: "post", name: "后处理" }
-]
+const mockCategories: ModuleCategory[] = [...LICENSE_MODULE_CATEGORIES]
 
-const mockModules: LicenseModule[] = [
-  { moduleId: "pre-impact", moduleNo: "PRE-IMP-001", name: "冲击前处理", categoryId: "pre" },
-  { moduleId: "pre-struct", moduleNo: "PRE-STR-002", name: "结构前处理", categoryId: "pre" },
-  { moduleId: "solver-impact-cpu", moduleNo: "SOL-IMP-CPU", name: "冲击求解器CPU版", categoryId: "solver" },
-  { moduleId: "solver-impact-gpu", moduleNo: "SOL-IMP-GPU", name: "冲击求解器GPU版", categoryId: "solver" },
-  { moduleId: "post-impact", moduleNo: "POST-IMP-001", name: "冲击后处理", categoryId: "post" }
-]
+const mockModules: LicenseModule[] = [...LICENSE_MODULES]
 
 let mockLicenseRequests: LicenseRequestItem[] = [
   {
@@ -205,7 +196,7 @@ let mockLicenseRequests: LicenseRequestItem[] = [
     macAddress: "A4:5E:60:7B:31:9C",
     status: "OVERDUE",
     categoryId: "post",
-    moduleId: "post-impact",
+    moduleId: "post-general",
     validFrom: "2024-05-01",
     validTo: "2024-11-01",
     usageCount: 40,
@@ -219,7 +210,7 @@ let mockLicenseRequests: LicenseRequestItem[] = [
     macAddress: "B7:4D:60:7B:31:9C",
     status: "REJECTED",
     categoryId: "post",
-    moduleId: "post-impact",
+    moduleId: "post-multibody",
     validFrom: "2024-06-01",
     validTo: "2024-12-01",
     usageCount: 20,
