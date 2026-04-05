@@ -9,7 +9,7 @@ import type * as UserInfo from "./types/userInfo"
 /** 获取用户信息 */
 export function getUserInfoApi() {
   return request<UserInfo.UserInfoResponseData>({
-    url: "/modUsers/info", // 假设这是获取当前用户信息的接口路径
+    url: "/modUsers/info",
     method: "get"
   })
 }

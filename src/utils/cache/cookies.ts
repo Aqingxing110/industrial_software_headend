@@ -53,3 +53,16 @@ export const getRoles = (): string[] => {
 export const removeRoles = () => {
   Cookies.remove(CacheKey.ROLES)
 }
+
+export const setTaskPermission = (taskPermission: number) => {
+  Cookies.set(CacheKey.TASK_PERMISSION, String(taskPermission))
+}
+
+export const getTaskPermission = (): number => {
+  const taskPermission = Cookies.get(CacheKey.TASK_PERMISSION)
+  return taskPermission ? Number(taskPermission) : 0
+}
+
+export const removeTaskPermission = () => {
+  Cookies.remove(CacheKey.TASK_PERMISSION)
+}

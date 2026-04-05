@@ -22,6 +22,7 @@ export type LoginResponseData = ApiResponseData<{
   permission: number
   phone: string
   userId: number // 补充userId字段
+  taskPermission: number // 补充taskPermission字段
 }>
 
 export type UserInfoResponseData = ApiResponseData<{ username: string; roles: string[] }>

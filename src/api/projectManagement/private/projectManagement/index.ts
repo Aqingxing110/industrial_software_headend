@@ -1,6 +1,7 @@
 import { request } from "@/utils/service"
 import type {
   ApiResponse,
+  OrganizationInfo,
   PageData,
   project
 } from "@/api/projectManagement/private/projectManagement/types/projectManagement"

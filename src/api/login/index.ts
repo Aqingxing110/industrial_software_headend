@@ -4,15 +4,6 @@
 
 import { request } from "@/utils/service"
 import type * as Login from "./types/login"
-//import * as Qs from "qs"
-
-/** 获取登录验证码 */
-/* export function getLoginCodeApi() {
-  return request<Login.LoginCodeResponseData>({
-    url: "auth/verifyCode",
-    method: "get"
-  })
-} */
 /** 获取登录验证码 */
 export function getLoginCodeApi(params: { key: string }) {
   return request<Login.LoginCodeResponseData>({
@@ -27,7 +18,6 @@ export function loginApi(data: Login.LoginRequestData) {
   return request<Login.LoginResponseData>({
     url: "auth/jsonLogin",
     method: "post",
-    //data: Qs.stringify(data)
     data
   })
 }

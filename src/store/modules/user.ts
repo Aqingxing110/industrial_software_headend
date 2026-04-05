@@ -16,7 +16,10 @@ import {
   removeUserId,
   getRoles,
   setRoles,
-  removeRoles
+  removeRoles,
+  getTaskPermission,
+  setTaskPermission,
+  removeTaskPermission
 } from "@/utils/cache/cookies"
 import { resetRouter } from "@/router"
 import { resetDynamicRouteState } from "@/router/dynamic-route-state"
@@ -30,6 +33,7 @@ export const useUserStore = defineStore("user", () => {
   const roles = ref<string[]>(getRoles() || [])
   const username = ref<string>(getUsername() || "")
   const userId = ref<number | null>(getUserId())
+  const taskPermission = ref<number>(getTaskPermission() || 0)
 
   const permissionStore = usePermissionStore()
   const tagsViewStore = useTagsViewStore()
@@ -56,6 +60,10 @@ export const useUserStore = defineStore("user", () => {
     roles.value = userRoles
     setRoles(userRoles)
 
+    const userTaskPermission = typeof data.taskPermission === "number" ? data.taskPermission : 0
+    taskPermission.value = userTaskPermission
+    setTaskPermission(userTaskPermission)
+
     permissionStore.setRoutes(roles.value)
   }
 
@@ -74,6 +82,7 @@ export const useUserStore = defineStore("user", () => {
     removeUsername()
     removeUserId()
     removeRoles()
+    removeTaskPermission()
     resetDynamicRouteState()
     token.value = ""
     username.value = ""
@@ -88,7 +97,7 @@ export const useUserStore = defineStore("user", () => {
     }
   }
 
-  return { token, roles, username, userId, setRoles, login, logout, resetToken, register }
+  return { token, roles, username, userId, taskPermission, setRoles, login, logout, resetToken, register }
 })
 
 export function useUserStoreHook() {

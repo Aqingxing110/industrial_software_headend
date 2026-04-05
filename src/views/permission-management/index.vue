@@ -16,7 +16,12 @@ import {
   ElSelect,
   ElOption
 } from "element-plus"
-import { getUserPageApi, changePermissionApi, updateUserOrganizationApi } from "@/api/permission"
+import {
+  getUserPageApi,
+  changePermissionApi,
+  updateUserOrganizationApi,
+  updateUserTaskPermissionApi
+} from "@/api/permission"
 import {
   getOrganizationListApi,
   createOrganizationApi,
@@ -25,7 +30,6 @@ import {
   removeMemberFromOrganizationApi,
   getUnassignedMembersApi
 } from "@/api/organizationManagement"
-// import type { ApiResponse, PermissionUser } from "@/api/permission/types/userInfo"
 import type { PermissionUser } from "@/api/permission/types/userInfo"
 import type { Organization, Member } from "@/api/organizationManagement/types/organization"
 
@@ -191,6 +195,7 @@ const addMembersToOrganization = async () => {
       selectedUnassignedMembers.value = []
       fetchOrgMembers(currentOrgId.value)
       fetchUnassignedMembers()
+      fetchUserData()
     } else {
       ElMessage.error(response.message || "成员添加失败")
     }
@@ -217,6 +222,7 @@ const removeMemberFromOrganization = async (memberId: string) => {
       ElMessage.success("成员移除成功")
       fetchOrgMembers(currentOrgId.value)
       fetchUnassignedMembers()
+      fetchUserData()
     } else {
       ElMessage.error(response.message || "成员移除失败")
     }
@@ -238,16 +244,32 @@ const toggleUserStatus = async (row: PermissionUser) => {
     })
 
     const newPermission = row.permission === 1 ? 0 : 1
-    const response = await changePermissionApi(row.userId, newPermission)
-
-    if (response.code === 200) {
-      row.permission = newPermission
-      ElMessage.success("权限修改成功")
-    } else {
-      ElMessage.error(response.message || "权限修改失败")
-    }
+    await changePermissionApi(row.userId, newPermission)
+    ElMessage.success("权限修改成功")
+    fetchUserData()
   } catch (error) {
-    if ((error as Error).message !== "cancel") {
+    if (error !== "cancel") {
+      console.error("权限修改失败:", error)
+      ElMessage.error("权限修改失败")
+    }
+  }
+}
+
+// 修改用户组织权限
+const toggleUserOrganizationPermission = async (row: PermissionUser) => {
+  try {
+    await ElMessageBox.confirm(`确定要${row.taskPermission === 1 ? "撤销" : "授予"}组管理员权限吗？`, "权限修改确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning"
+    })
+
+    const newPermission = row.taskPermission === 1 ? 0 : 1
+    await updateUserTaskPermissionApi(row.userId, newPermission)
+    ElMessage.success("权限修改成功")
+    fetchUserData()
+  } catch (error) {
+    if (error !== "cancel") {
       console.error("权限修改失败:", error)
       ElMessage.error("权限修改失败")
     }
@@ -311,8 +333,8 @@ const openEditOrgDialog = (user: PermissionUser) => {
 }
 
 // 修改组织
-const updateUserOrganization = async (user: PermissionUser | null, newOrgId: string) => {
-  if (!user || !newOrgId) return
+const updateUserOrganization = async (user: PermissionUser | null, newOrgId: string = "") => {
+  if (!user) return
 
   try {
     await ElMessageBox.confirm(`确定要将用户分配到新组织吗？`, "组织修改确认", {
@@ -331,6 +353,7 @@ const updateUserOrganization = async (user: PermissionUser | null, newOrgId: str
       }
 
       ElMessage.success("组织修改成功")
+      fetchUserData()
       showEditOrgDialog.value = false
 
       if (showOrgDialog.value && currentOrgId.value) {
@@ -365,15 +388,23 @@ const updateUserOrganization = async (user: PermissionUser | null, newOrgId: str
       <el-table-column prop="permission" label="用户权限" width="150">
         <template #default="{ row }">
           <el-tag :type="row.permission === 1 ? 'success' : 'danger'">
-            {{ row.permission === 1 ? "管理员" : "普通用户" }}
+            {{ row.permission === 1 ? "管理员" : row.taskPermission === 1 ? "组管理员" : "普通用户" }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="organization" label="组织" width="200" />
-      <el-table-column label="操作" width="250">
+      <el-table-column label="操作" width="300">
         <template #default="{ row }">
           <el-button type="primary" size="small" @click="toggleUserStatus(row)">
             {{ row.permission === 1 ? "撤销管理员" : "设为管理员" }}
+          </el-button>
+          <el-button
+            type="primary"
+            size="small"
+            @click="toggleUserOrganizationPermission(row)"
+            :disabled="row.orgId === ''"
+          >
+            {{ row.taskPermission === 1 ? "撤销组管理员" : "设为组管理员" }}
           </el-button>
           <el-button size="small" type="info" @click="openEditOrgDialog(row)">修改组织</el-button>
         </template>
@@ -433,20 +464,14 @@ const updateUserOrganization = async (user: PermissionUser | null, newOrgId: str
         <p>用户名: {{ currentUser.username }}</p>
         <p>当前组织: {{ currentUser.organization || "无" }}</p>
 
-        <el-select v-model="selectedOrgId" placeholder="请选择新组织" style="width: 100%; margin-top: 15px">
+        <el-select v-model="selectedOrgId" placeholder="请选择新组织" style="width: 100%; margin-top: 15px" clearable>
           <el-option v-for="org in organizations" :key="org.orgId" :label="org.orgName" :value="org.orgId" />
         </el-select>
       </div>
 
       <template #footer>
         <el-button @click="showEditOrgDialog = false">取消</el-button>
-        <el-button
-          type="primary"
-          @click="updateUserOrganization(currentUser, selectedOrgId)"
-          :disabled="!selectedOrgId"
-        >
-          确定
-        </el-button>
+        <el-button type="primary" @click="updateUserOrganization(currentUser, selectedOrgId)"> 确定 </el-button>
       </template>
     </el-dialog>
 

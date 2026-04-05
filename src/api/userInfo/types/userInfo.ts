@@ -7,4 +7,8 @@ export type UserInfoResponseData = ApiResponseData<{
   permission: number
   /** 用户所属组织 */
   organization: string
+  /** 用户所属组织ID */
+  orgId: string
+  /** 用户任务权限，0表示个人权限，1表示组织权限 */
+  taskPermission: number
 }>

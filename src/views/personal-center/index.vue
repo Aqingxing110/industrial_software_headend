@@ -19,7 +19,9 @@
             <div class="info-item">
               <el-icon><User /></el-icon>
               <span>权限：</span>
-              <span>{{ userInfo.permission === 1 ? "管理员" : "普通用户" }}</span>
+              <span>{{
+                userInfo.permission === 1 ? "管理员" : userInfo.taskPermission === 1 ? "组管理员" : "普通用户"
+              }}</span>
             </div>
           </div>
         </el-tab-pane>
@@ -71,7 +73,6 @@
 import { ref, onMounted } from "vue"
 import { ElForm, ElFormItem, ElInput, ElButton, ElTabs, ElTabPane, ElIcon, ElMessage } from "element-plus"
 import { User, Phone } from "@element-plus/icons-vue"
-import { getCurrentInstance } from "vue"
 import { getUserInfoApi } from "@/api/userInfo" // 假设你有一个获取当前用户信息的 API
 import { changePasswordApi } from "@/api/userInfo" // 假设你有一个修改密码的 API
 
@@ -117,7 +118,8 @@ const activeTab = ref("basic")
 const userInfo = ref({
   username: "",
   phone: "",
-  permission: 0 // 0: 普通用户, 1: 管理员
+  permission: 0, // 0: 普通用户, 1: 管理员
+  taskPermission: 0 // 0: 无权限, 1: 有权限
 })
 
 // 提交表单方法

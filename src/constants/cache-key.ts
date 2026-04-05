@@ -10,6 +10,7 @@ class CacheKey {
   static readonly USERNAME = `${SYSTEM_NAME}-username-key`
   static readonly USER_ID = `${SYSTEM_NAME}-user-id-key`
   static readonly ROLES = `${SYSTEM_NAME}-roles-key`
+  static readonly TASK_PERMISSION = `${SYSTEM_NAME}-task-permission-key`
 }
 
 export default CacheKey

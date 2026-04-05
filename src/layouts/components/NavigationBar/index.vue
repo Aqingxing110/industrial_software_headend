@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from "vue"
+import { computed, onMounted, ref } from "vue"
 import { useRouter } from "vue-router"
 import { storeToRefs } from "pinia"
 import { useAppStore } from "@/store/modules/app"
@@ -14,6 +14,17 @@ import ThemeSwitch from "@/components/ThemeSwitch/index.vue"
 import Screenfull from "@/components/Screenfull/index.vue"
 import SearchMenu from "@/components/SearchMenu/index.vue"
 import { DeviceEnum } from "@/constants/app-key"
+import { Member } from "@/api/organizationManagement/types/organization"
+import { ElMessage, ElMessageBox } from "element-plus"
+import {
+  addMembersToOrganizationApi,
+  getOrganizationMembersApi,
+  getUnassignedMembersApi,
+  removeMemberFromOrganizationApi
+} from "@/api/organizationManagement"
+import { PermissionUser } from "@/api/permission/types/userInfo"
+import { updateUserTaskPermissionApi } from "@/api/permission"
+import { getUserOrganizationApi } from "@/api/projectManagement/shared/projectManagement"
 
 const router = useRouter()
 const appStore = useAppStore()
@@ -40,6 +51,156 @@ const logout = () => {
 const goToPersonalCenter = () => {
   router.push("/personal-center")
 }
+
+const showOrgDialog = ref(false)
+const currentOrgId = ref<string>()
+const orgMembers = ref<Member[]>([])
+const unassignedMembers = ref<Member[]>([])
+const selectedUnassignedMembers = ref<string[]>([])
+const showAddMemberDialog = ref(false)
+const loadingMembers = ref(false)
+const loadingUnassigned = ref(false)
+
+const goToOrganizationManagement = () => {
+  if (!currentOrgId.value) return
+  showOrgDialog.value = true
+  fetchOrgMembers(currentOrgId.value)
+}
+
+// 获取组织成员
+const fetchOrgMembers = async (orgId: string) => {
+  loadingMembers.value = true
+  try {
+    const response = await getOrganizationMembersApi(orgId, {
+      pageNum: 1,
+      pageSize: 100
+    })
+
+    if (response.code === 200) {
+      orgMembers.value = response.data.records
+      currentOrgId.value = orgId
+    } else {
+      ElMessage.error(response.message || "获取组织成员失败")
+    }
+  } catch (error) {
+    console.error("获取组织成员失败:", error)
+    ElMessage.error("获取组织成员失败")
+  } finally {
+    loadingMembers.value = false
+  }
+}
+
+// 获取未分配成员
+const fetchUnassignedMembers = async () => {
+  loadingUnassigned.value = true
+  try {
+    const response = await getUnassignedMembersApi({
+      pageNum: 1,
+      pageSize: 100
+    })
+
+    if (response.code === 200) {
+      unassignedMembers.value = response.data.records
+    } else {
+      ElMessage.error(response.message || "获取未分配成员失败")
+    }
+  } catch (error) {
+    console.error("获取未分配成员失败:", error)
+    ElMessage.error("获取未分配成员失败")
+  } finally {
+    loadingUnassigned.value = false
+  }
+}
+
+// 添加成员到组织
+const addMembersToOrganization = async () => {
+  if (!currentOrgId.value) return
+
+  try {
+    const dto = {
+      userIds: selectedUnassignedMembers.value
+    }
+
+    const response = await addMembersToOrganizationApi(currentOrgId.value, dto)
+
+    if (response.code === 200) {
+      ElMessage.success("成员添加成功")
+      showAddMemberDialog.value = false
+      selectedUnassignedMembers.value = []
+      fetchOrgMembers(currentOrgId.value)
+      fetchUnassignedMembers()
+    } else {
+      ElMessage.error(response.message || "成员添加失败")
+    }
+  } catch (error) {
+    console.error("成员添加失败:", error)
+    ElMessage.error("成员添加失败")
+  }
+}
+
+// 移除组织成员
+const removeMemberFromOrganization = async (memberId: string) => {
+  if (!currentOrgId.value) return
+
+  try {
+    await ElMessageBox.confirm("确定要移除该成员吗？", "移除确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning"
+    })
+
+    const response = await removeMemberFromOrganizationApi(currentOrgId.value, memberId)
+
+    if (response.code === 200) {
+      ElMessage.success("成员移除成功")
+      fetchOrgMembers(currentOrgId.value)
+      fetchUnassignedMembers()
+    } else {
+      ElMessage.error(response.message || "成员移除失败")
+    }
+  } catch (error) {
+    if ((error as Error).message !== "cancel") {
+      console.error("成员移除失败:", error)
+      ElMessage.error("成员移除失败")
+    }
+  }
+}
+
+// 打开添加成员对话框
+const openAddMemberDialog = (orgId: string) => {
+  currentOrgId.value = orgId
+  showAddMemberDialog.value = true
+  fetchUnassignedMembers()
+}
+
+// 修改用户组织权限
+const toggleUserOrganizationPermission = async (row: PermissionUser) => {
+  try {
+    await ElMessageBox.confirm(`确定要${row.taskPermission === 1 ? "撤销" : "授予"}组管理员权限吗？`, "权限修改确认", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning"
+    })
+
+    const newPermission = row.taskPermission === 1 ? 0 : 1
+    await updateUserTaskPermissionApi(row.userId, newPermission)
+    ElMessage.success("权限修改成功")
+    fetchOrgMembers(currentOrgId.value!)
+    fetchUnassignedMembers()
+  } catch (error) {
+    if (error !== "cancel") {
+      console.error("权限修改失败:", error)
+      ElMessage.error("权限修改失败")
+    }
+  }
+}
+
+onMounted(async () => {
+  if (userStore.token && userStore.taskPermission === 1) {
+    const orgId = (await getUserOrganizationApi()).data.orgId.toString()
+    currentOrgId.value = orgId
+  }
+})
 </script>
 
 <template>
@@ -59,14 +220,11 @@ const goToPersonalCenter = () => {
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <!-- <a target="_blank" href="https://github.com/un-pany/v3-admin-vite">
-              <el-dropdown-item>GitHub</el-dropdown-item>
-            </a>
-            <a target="_blank" href="https://gitee.com/un-pany/v3-admin-vite">
-              <el-dropdown-item>Gitee</el-dropdown-item>
-            </a> -->
             <el-dropdown-item @click="goToPersonalCenter">
               <span style="display: block">个人中心</span>
+            </el-dropdown-item>
+            <el-dropdown-item v-if="userStore.taskPermission === 1" @click="goToOrganizationManagement">
+              <span style="display: block">组织管理</span>
             </el-dropdown-item>
             <el-dropdown-item divided @click="logout">
               <span style="display: block">退出登录</span>
@@ -75,6 +233,44 @@ const goToPersonalCenter = () => {
         </template>
       </el-dropdown>
     </div>
+    <!-- 组织管理对话框 -->
+    <el-dialog v-model="showOrgDialog" title="组织管理" width="50%" top="5vh" :key="currentOrgId">
+      <div class="org-management">
+        <div class="member-list" v-if="userStore.taskPermission === 1 && currentOrgId">
+          <h3>组织成员</h3>
+          <el-button type="primary" size="small" @click="openAddMemberDialog(currentOrgId)">添加成员</el-button>
+          <el-table :data="orgMembers" :style="{ width: '100%' }" v-loading="loadingMembers">
+            <el-table-column prop="userName" label="用户名" />
+            <el-table-column label="操作" width="200">
+              <template #default="{ row }">
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="toggleUserOrganizationPermission(row)"
+                  :disabled="row.orgId === ''"
+                >
+                  {{ row.taskPermission === 1 ? "撤销组管理员" : "设为组管理员" }}
+                </el-button>
+                <el-button type="danger" size="small" @click="removeMemberFromOrganization(row.userId)">移除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+    </el-dialog>
+    <!-- 添加成员对话框 -->
+    <el-dialog v-model="showAddMemberDialog" title="添加成员">
+      <el-transfer
+        v-model="selectedUnassignedMembers"
+        :data="unassignedMembers.map((m) => ({ key: m.userId, label: m.userName }))"
+        :titles="['未分配成员', '已选择']"
+        v-loading="loadingUnassigned"
+      />
+      <template #footer>
+        <el-button @click="showAddMemberDialog = false">取消</el-button>
+        <el-button type="primary" @click="addMembersToOrganization">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
