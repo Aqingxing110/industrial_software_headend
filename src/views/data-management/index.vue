@@ -511,13 +511,7 @@ onMounted(() => {
       </el-form>
 
       <template #footer>
-        <el-button
-          @click="
-            showUploadDialog = false
-            resetUploadForm()
-          "
-          >取消</el-button
-        >
+        <el-button @click="(showUploadDialog = false), resetUploadForm()">取消</el-button>
         <el-button type="primary" @click="submitUpload">上传</el-button>
       </template>
     </el-dialog>
