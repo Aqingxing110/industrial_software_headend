@@ -9,4 +9,13 @@ const getComponents = () => {
   })
 }
 
-export { getComponents }
+const installComponent = (componentId: number) => {
+  return request<Blob>({
+    url: "/components/install",
+    method: "get",
+    params: { componentId },
+    responseType: "blob"
+  })
+}
+
+export { getComponents, installComponent }
