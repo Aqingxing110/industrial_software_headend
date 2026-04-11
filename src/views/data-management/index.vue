@@ -13,7 +13,10 @@ import {
   ElForm,
   ElFormItem,
   ElImage,
-  ElMessageBox
+  ElMessageBox,
+  ElTag,
+  ElRadioGroup,
+  ElRadioButton
 } from "element-plus"
 import {
   getFileListApi,
@@ -23,32 +26,28 @@ import {
   DbType,
   deleteFileApi
 } from "@/api/dataManagement"
+import { getPrivateProjectsApi, getSharedProjectsApi } from "@/api/projectManagement"
+import type { Project } from "@/api/projectManagement/types"
+import type { FileItem } from "@/api/dataManagement/types/file"
 import { formatBytes } from "@/utils/format"
 import { formatDateTime } from "@/utils/format"
 
-// 数据库列表
-const databases = ref([
-  { id: DbType.SimulationResult, name: "仿真结果数据库" },
-  { id: DbType.ExampleLibrary, name: "算例库" },
-  { id: DbType.MaterialConstitutive, name: "材料本构数据库" },
-  { id: DbType.ConnectionPerformance, name: "连接性能数据库" },
-  { id: DbType.ModelLibrary, name: "模型库" },
-  { id: DbType.AircraftDummy, name: "航空假人库" }
-])
+type ProjectScope = "shared" | "private"
 
-// 当前选中的数据库
-const selectedDatabase = ref<DbType>(DbType.SimulationResult)
+const FIXED_DB_TYPE = DbType.SimulationResult
 
-// 文件列表数据
-const fileList = ref<any[]>([])
+const projectScope = ref<ProjectScope>("shared")
+const projects = ref<Project[]>([])
+const selectedProjectId = ref<number | undefined>(undefined)
+
+const fileList = ref<FileItem[]>([])
 const totalFiles = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const isLoading = ref(false)
-// 搜索关键词
 const searchKeyword = ref("")
+let fileRequestSeq = 0
 
-// 上传相关状态
 const showUploadDialog = ref(false)
 const uploadForm = reactive({
   fileName: "",
@@ -56,7 +55,6 @@ const uploadForm = reactive({
   previewImage: null as File | null
 })
 
-// 预览相关状态
 const showPreviewDialog = ref(false)
 const previewLoading = ref(false)
 const previewImageUrl = ref("")
@@ -64,94 +62,138 @@ const previewTitle = ref("")
 const PREVIEW_IMAGE_MAX_SIZE = 10 * 1024 * 1024
 const PREVIEW_IMAGE_ACCEPT_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
-// 获取文件列表
+const getSelectedProject = () => projects.value.find((p) => p.projectId === selectedProjectId.value) || null
+
+const normalizeFileRows = (records: FileItem[]) => {
+  const currentProject = getSelectedProject()
+  return records.map((row) => ({
+    ...row,
+    projectName: currentProject?.project_name || `项目-${row.projectId}`,
+    projectType: projectScope.value
+  }))
+}
+
+const fetchProjects = async () => {
+  try {
+    const params = { pageNum: 1, pageSize: 200, keyword: "" }
+    const response =
+      projectScope.value === "shared"
+        ? await getSharedProjectsApi(params)
+        : await getPrivateProjectsApi(params)
+
+    projects.value = response.data?.records || []
+    selectedProjectId.value = projects.value.length > 0 ? projects.value[0].projectId : undefined
+  } catch (error) {
+    projects.value = []
+    selectedProjectId.value = undefined
+    ElMessage.error("获取项目列表失败")
+    console.error("获取项目列表失败:", error)
+  }
+}
+
 const fetchFiles = async () => {
-  if (!selectedDatabase.value) return
+  const requestSeq = ++fileRequestSeq
+
+  if (!selectedProjectId.value) {
+    fileList.value = []
+    totalFiles.value = 0
+    return
+  }
 
   isLoading.value = true
   try {
     const response = await getFileListApi({
-      dbType: selectedDatabase.value,
+      dbType: FIXED_DB_TYPE,
+      projectId: selectedProjectId.value,
       pageNum: currentPage.value,
       pageSize: pageSize.value,
       keyword: searchKeyword.value
     })
 
-    // 修改判断条件为数值比较
-    if (response.code === 200) {
-      fileList.value = response.data.records
-      totalFiles.value = response.data.total
-    } else {
-      const errorMessage = response.message || "未知错误"
-      ElMessage.error(`获取文件列表失败: ${errorMessage}`)
-      console.error("获取文件列表失败:", errorMessage, response)
-    }
-  } catch (error: any) {
-    // 更详细的错误处理
-    if (error.response) {
-      // HTTP响应错误
-      const status = error.response.status
-      const errorData = error.response.data
-      const errorMessage = errorData.message || `HTTP错误 ${status}`
+    if (requestSeq !== fileRequestSeq) return
 
-      if (status === 401) {
-        ElMessage.error("未授权，请先登录")
-        // 可以跳转到登录页面
-      } else if (status === 403) {
-        ElMessage.error("权限不足")
-      } else {
-        ElMessage.error(`获取文件列表失败: ${errorMessage}`)
+    if (response.code === 200) {
+      const rawRecords = response.data.records || []
+      const safeRecords = rawRecords.filter((row) => row.projectId === selectedProjectId.value)
+
+      // 后端若混回了其他项目的数据，这里直接拦截并给出调试信号
+      if (safeRecords.length !== rawRecords.length) {
+        console.warn("[data-management] 检测到跨项目数据，可能后端未按projectId正确过滤", {
+          projectScope: projectScope.value,
+          selectedProjectId: selectedProjectId.value,
+          returnedProjectIds: [...new Set(rawRecords.map((item) => item.projectId))]
+        })
+        ElMessage.warning("检测到接口返回了其他项目数据，已自动过滤")
       }
 
-      console.error("获取文件列表HTTP错误:", status, errorData)
+      fileList.value = normalizeFileRows(safeRecords)
+      totalFiles.value = response.data.total
     } else {
-      // 网络错误或其他错误
-      const errorMessage = error.message || "未知网络错误"
-      ElMessage.error(`获取文件列表失败: ${errorMessage}`)
-      console.error("获取文件列表网络错误:", error)
+      fileList.value = []
+      totalFiles.value = 0
+      ElMessage.error(`获取文件列表失败: ${response.message || "未知错误"}`)
     }
+  } catch (error: any) {
+    if (requestSeq !== fileRequestSeq) return
+
+    fileList.value = []
+    totalFiles.value = 0
+    const msg = error?.response?.data?.message || error?.message || "未知网络错误"
+    ElMessage.error(`获取文件列表失败: ${msg}`)
+    console.error("获取文件列表失败:", error)
   } finally {
-    isLoading.value = false
+    if (requestSeq === fileRequestSeq) {
+      isLoading.value = false
+    }
   }
 }
 
-// 数据库切换处理
-const handleDatabaseChange = () => {
+const handleScopeChange = async () => {
+  // 先清空当前列表，避免切换分区时短暂显示上一个分区的数据
+  fileList.value = []
+  totalFiles.value = 0
+
+  currentPage.value = 1
+  searchKeyword.value = ""
+  await fetchProjects()
+  await fetchFiles()
+}
+
+const handleProjectChange = () => {
+  fileList.value = []
+  totalFiles.value = 0
   currentPage.value = 1
   fetchFiles()
 }
 
-// 分页处理
 const handlePageChange = (page: number) => {
   currentPage.value = page
   fetchFiles()
 }
 
-// 搜索处理
 const handleSearch = () => {
   currentPage.value = 1
   fetchFiles()
 }
 
-// 重置搜索
 const resetSearch = () => {
   searchKeyword.value = ""
   currentPage.value = 1
   fetchFiles()
 }
 
-// 下载文件
-const downloadFile = async (fileId: string) => {
+const downloadFile = async (row: FileItem) => {
   try {
     const response = await downloadFileApi({
-      dbType: selectedDatabase.value,
-      field: fileId
+      dbType: FIXED_DB_TYPE,
+      field: row.id,
+      projectId: row.projectId
     })
 
     const blob = response.data
     const disposition = response.headers["content-disposition"]
 
-    let fileName = `file_${fileId}.dat`
+    let fileName = row.fileName || `file_${row.id}.dat`
     if (disposition) {
       const match = disposition.match(/filename\*=UTF-8''(.+)/)
       if (match && match[1]) {
@@ -172,87 +214,53 @@ const downloadFile = async (fileId: string) => {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-
-    ElMessage.success(`文件下载成功: ${fileName}`)
   } catch (error: any) {
-    if (error.response) {
-      const blob = error.response.data
-      if (blob instanceof Blob && blob.type === "application/json") {
-        const reader = new FileReader()
-        reader.onload = () => {
-          try {
-            const errorData = JSON.parse(reader.result as string)
-            console.error("服务器返回的错误详情:", errorData)
-            ElMessage.error(`下载失败: ${errorData.message || errorData.msg || "未知错误"}`)
-          } catch (e) {
-            console.error("解析错误响应失败:", e)
-          }
-        }
-        reader.readAsText(blob)
-      }
-    } else {
-      ElMessage.error(`下载失败: ${error.message || "未知错误"}`)
-    }
+    ElMessage.error(`下载失败: ${error?.message || "未知错误"}`)
   }
 }
 
-// 删除文件
-const deleteFile = async (fileId: string, fileName: string) => {
+const deleteFile = async (row: FileItem) => {
   try {
-    // 1. 显示确认对话框
-    const confirmResult = await ElMessageBox.confirm(`确定要删除文件"${fileName}"吗？此操作不可撤销。`, "删除确认", {
+    await ElMessageBox.confirm(`确定要删除文件"${row.fileName}"吗？此操作不可撤销。`, "删除确认", {
       confirmButtonText: "确认删除",
       cancelButtonText: "取消",
       type: "warning"
     })
 
-    // 2. 用户确认删除后执行操作
-    if (confirmResult === "confirm") {
-      isLoading.value = true
-      //
-      const response = await deleteFileApi({
-        dbType: selectedDatabase.value,
-        fileId: fileId
-      })
+    const response = await deleteFileApi({
+      dbType: FIXED_DB_TYPE,
+      fileId: row.id,
+      projectId: row.projectId
+    })
 
-      if (response.code === 200) {
-        ElMessage.success(`文件"${fileName}"删除成功`)
-        fetchFiles() // 刷新列表
-      } else {
-        ElMessage.error(`删除失败: ${response.message || "未知错误"}`)
-      }
+    if (response.code === 200) {
+      ElMessage.success(`文件"${row.fileName}"删除成功`)
+      fetchFiles()
+    } else {
+      ElMessage.error(`删除失败: ${response.message || "未知错误"}`)
     }
   } catch (error: any) {
-    // 用户取消删除时不提示错误
-    if (error === "cancel") return
-
-    // 其他错误处理
-    ElMessage.error(`操作失败: ${error.message || "系统异常"}`)
-    console.error("删除文件错误:", error)
-  } finally {
-    isLoading.value = false
+    if (error !== "cancel") {
+      ElMessage.error(`操作失败: ${error?.message || "系统异常"}`)
+    }
   }
 }
 
-// 打开上传对话框
 const openUploadDialog = () => {
-  if (!selectedDatabase.value) {
-    ElMessage.warning("请先选择数据库")
+  if (!selectedProjectId.value) {
+    ElMessage.warning("请先选择项目")
     return
   }
   showUploadDialog.value = true
 }
 
-// 文件选择处理
 const handleFileChange = (file: File) => {
   uploadForm.file = file
   if (!uploadForm.fileName) {
-    // 使用文件名（不含扩展名）作为默认文件名
     uploadForm.fileName = file.name.replace(/\.[^/.]+$/, "")
   }
 }
 
-// 预览图选择处理
 const handlePreviewImageChange = (file: File) => {
   if (!PREVIEW_IMAGE_ACCEPT_TYPES.includes(file.type)) {
     ElMessage.warning("预览图格式仅支持 JPG/PNG/WEBP")
@@ -307,8 +315,7 @@ const parseBlobErrorMessage = (blob: Blob): Promise<string> => {
   })
 }
 
-// 预览图片
-const previewFileImage = async (row: any) => {
+const previewFileImage = async (row: FileItem) => {
   if (!row?.hasPreview) {
     ElMessage.info("该文件暂无预览图")
     return
@@ -321,8 +328,9 @@ const previewFileImage = async (row: any) => {
 
   try {
     const response = await getPreviewImageApi({
-      dbType: selectedDatabase.value,
-      fileId: row.id
+      dbType: FIXED_DB_TYPE,
+      fileId: row.id,
+      projectId: row.projectId
     })
 
     const blob = response.data
@@ -345,10 +353,14 @@ const previewFileImage = async (row: any) => {
   }
 }
 
-// 提交上传
 const submitUpload = async () => {
   if (!uploadForm.file || !uploadForm.fileName) {
     ElMessage.warning("请选择文件并填写文件名")
+    return
+  }
+
+  if (!selectedProjectId.value) {
+    ElMessage.warning("请选择项目")
     return
   }
 
@@ -366,16 +378,15 @@ const submitUpload = async () => {
   isLoading.value = true
   try {
     const formData = new FormData()
-    formData.append("dbType", selectedDatabase.value)
+    formData.append("dbType", FIXED_DB_TYPE)
     formData.append("fileName", uploadForm.fileName)
+    formData.append("projectId", String(selectedProjectId.value))
     formData.append("file", uploadForm.file)
     if (uploadForm.previewImage) {
       formData.append("previewImage", uploadForm.previewImage)
     }
 
     const response = await uploadFileApi(formData)
-
-    // 修改判断条件，与 handleUploadSuccess 方法一致
     if (response.code === 200) {
       ElMessage.success("文件上传成功")
       showUploadDialog.value = false
@@ -383,30 +394,39 @@ const submitUpload = async () => {
       currentPage.value = 1
       fetchFiles()
     } else {
-      const errorMessage = response.message || "未知错误"
-      ElMessage.error(`文件上传失败: ${errorMessage}`)
+      ElMessage.error(`文件上传失败: ${response.message || "未知错误"}`)
     }
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || error.message || "文件上传时发生未知错误"
     ElMessage.error(errorMessage)
-    console.error("文件上传错误详情:", error)
   } finally {
     isLoading.value = false
   }
 }
 
-// 初始化
-onMounted(() => {
-  fetchFiles()
+onMounted(async () => {
+  await fetchProjects()
+  await fetchFiles()
 })
 </script>
 
 <template>
   <div class="data-management-container">
-    <!-- 数据库选择区域 -->
-    <div class="database-selection">
-      <el-select v-model="selectedDatabase" placeholder="请选择数据库" @change="handleDatabaseChange">
-        <el-option v-for="db in databases" :key="db.id" :label="db.name" :value="db.id" />
+    <div class="top-bar">
+      <el-radio-group v-model="projectScope" @change="handleScopeChange">
+        <el-radio-button label="shared">公开项目</el-radio-button>
+        <el-radio-button label="private">私有项目</el-radio-button>
+      </el-radio-group>
+
+      <el-select
+        v-model="selectedProjectId"
+        placeholder="请选择项目"
+        filterable
+        clearable
+        style="min-width: 260px"
+        @change="handleProjectChange"
+      >
+        <el-option v-for="proj in projects" :key="proj.projectId" :label="proj.project_name" :value="proj.projectId" />
       </el-select>
 
       <div class="search-container">
@@ -423,12 +443,22 @@ onMounted(() => {
         </el-input>
       </div>
 
-      <el-button type="primary" @click="openUploadDialog" :disabled="!selectedDatabase"> 上传文件到该数据库 </el-button>
+      <el-button type="primary" @click="openUploadDialog">上传文件</el-button>
     </div>
 
-    <!-- 文件列表表格 -->
     <el-table :data="fileList" :style="{ width: '100%' }" v-loading="isLoading">
       <el-table-column prop="fileName" label="文件名" min-width="200" />
+      <el-table-column label="项目" width="180">
+        <template #default="{ row }">
+          <span>{{ row.projectName || '-' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="权限" width="110" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.projectType === 'private'" type="warning" size="small">🔒 私有</el-tag>
+          <el-tag v-else type="info" size="small">🌐 公开</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="大小" width="120">
         <template #default="{ row }">
           {{ formatBytes(row.fileSize) }}
@@ -447,13 +477,12 @@ onMounted(() => {
       </el-table-column>
       <el-table-column label="操作" width="140">
         <template #default="{ row }">
-          <el-button type="primary" size="small" @click="downloadFile(row.id)"> 下载 </el-button>
-          <el-button type="primary" size="small" @click="deleteFile(row.id, row.fileName)"> 删除 </el-button>
+          <el-button type="primary" size="small" @click="downloadFile(row)">下载</el-button>
+          <el-button type="danger" size="small" @click="deleteFile(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <!-- 分页控件 -->
     <el-pagination
       background
       layout="total, prev, pager, next, jumper"
@@ -465,11 +494,10 @@ onMounted(() => {
       :disabled="isLoading"
     />
 
-    <!-- 上传文件对话框 -->
     <el-dialog v-model="showUploadDialog" title="上传文件" width="500px" @close="resetUploadForm">
-      <el-form :model="uploadForm" label-width="80px">
-        <el-form-item label="数据库">
-          <div>{{ databases.find((db) => db.id === selectedDatabase)?.name }}</div>
+      <el-form :model="uploadForm" label-width="90px">
+        <el-form-item label="项目">
+          <div>{{ getSelectedProject()?.project_name || '-' }}</div>
         </el-form-item>
 
         <el-form-item label="文件名" required>
@@ -481,7 +509,7 @@ onMounted(() => {
             class="upload-demo"
             :auto-upload="false"
             :show-file-list="false"
-            :on-change="(file) => handleFileChange(file.raw)"
+            :on-change="(file) => file.raw && handleFileChange(file.raw)"
           >
             <template #trigger>
               <el-button type="primary">选择文件</el-button>
@@ -498,7 +526,7 @@ onMounted(() => {
             :auto-upload="false"
             :show-file-list="false"
             accept="image/png,image/jpeg,image/webp"
-            :on-change="(file) => handlePreviewImageChange(file.raw)"
+            :on-change="(file) => file.raw && handlePreviewImageChange(file.raw)"
           >
             <template #trigger>
               <el-button>选择预览图</el-button>
@@ -534,15 +562,17 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.database-selection {
+.top-bar {
   display: flex;
-  gap: 15px;
+  gap: 12px;
   margin-bottom: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
 
-  .el-select {
-    flex: 1;
-    max-width: 400px;
-  }
+.search-container {
+  min-width: 260px;
+  flex: 1;
 }
 
 .pagination {
