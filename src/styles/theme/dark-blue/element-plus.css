@@ -6,14 +6,41 @@
 
 html.dark-blue {
   /** color */
-  --el-color-primary: #01efb7bb;
-  --el-color-primary-light-3: rgba(1, 147, 127, 0.8133333333);
-  --el-color-primary-light-5: rgba(2, 102, 99, 0.8666666667);
-  --el-color-primary-light-7: rgba(2, 65, 77, 0.92);
-  --el-color-primary-light-8: rgba(2, 49, 68, 0.9466666667);
-  --el-color-primary-light-9: rgba(2, 35, 59, 0.9733333333);
-  --el-color-primary-dark-2: rgba(1, 167, 128, 0.7866666667);
-  --el-color-success: #01efb7bb;
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
+  --el-color-success: #67c23a;
+  --el-color-success-light-3: #95d475;
+  --el-color-success-light-5: #b3e19d;
+  --el-color-success-light-7: #d1edc4;
+  --el-color-success-light-8: #e1f3d8;
+  --el-color-success-light-9: #f0f9eb;
+  --el-color-success-dark-2: #529b2e;
+  --el-color-warning: #e6a23c;
+  --el-color-warning-light-3: #eebe77;
+  --el-color-warning-light-5: #f3d19e;
+  --el-color-warning-light-7: #f8e3c5;
+  --el-color-warning-light-8: #faecd8;
+  --el-color-warning-light-9: #fdf6ec;
+  --el-color-warning-dark-2: #b88230;
+  --el-color-danger: #f56c6c;
+  --el-color-danger-light-3: #f89898;
+  --el-color-danger-light-5: #fab6b6;
+  --el-color-danger-light-7: #fcd3d3;
+  --el-color-danger-light-8: #fde2e2;
+  --el-color-danger-light-9: #fef0f0;
+  --el-color-danger-dark-2: #c45656;
+  --el-color-info: #909399;
+  --el-color-info-light-3: #b1b3b8;
+  --el-color-info-light-5: #c8c9cc;
+  --el-color-info-light-7: #dedfe0;
+  --el-color-info-light-8: #e9e9eb;
+  --el-color-info-light-9: #f4f4f5;
+  --el-color-info-dark-2: #73767a;
   /** text-color */
   --el-text-color-primary: rgba(255, 255, 255, 0.8);
   --el-text-color-regular: rgba(255, 255, 255, 0.8);
@@ -21,12 +48,12 @@ html.dark-blue {
   --el-text-color-placeholder: rgba(255, 255, 255, 0.8);
   --el-text-color-disabled: rgba(255, 255, 255, 0.3);
   /** border-color */
-  --el-border-color: #01efb755;
-  --el-border-color-light: #01efb755;
-  --el-border-color-lighter: #01efb755;
+  --el-border-color: rgba(64, 158, 255, 0.33);
+  --el-border-color-light: rgba(64, 158, 255, 0.33);
+  --el-border-color-lighter: rgba(64, 158, 255, 0.24);
   /** fill-color */
-  --el-fill-color: #01efb710;
-  --el-fill-color-light: #01efb710;
+  --el-fill-color: rgba(64, 158, 255, 0.08);
+  --el-fill-color-light: rgba(64, 158, 255, 0.08);
   --el-fill-color-blank: #031e47;
   /** bg-color */
   --el-bg-color: #021633;

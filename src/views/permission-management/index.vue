@@ -362,6 +362,12 @@ const updateUserOrganization = async (user: PermissionUser | null, newOrgId: str
     }
   }
 }
+
+const getUserRoleTagType = (row: PermissionUser) => {
+  if (row.permission === 1) return "primary"
+  if (row.taskPermission === 1) return "success"
+  return "info"
+}
 </script>
 
 <template>
@@ -370,7 +376,7 @@ const updateUserOrganization = async (user: PermissionUser | null, newOrgId: str
       <div class="search-container">
         <el-input v-model="searchQuery" placeholder="请输入用户名" class="search-input" @keyup.enter="handleSearch" />
         <el-button type="primary" @click="handleSearch" :loading="isLoading">搜索</el-button>
-        <el-button type="success" @click="openOrgManagement">组织管理</el-button>
+        <el-button type="primary" @click="openOrgManagement">组织管理</el-button>
       </div>
     </div>
 
@@ -379,7 +385,7 @@ const updateUserOrganization = async (user: PermissionUser | null, newOrgId: str
       <el-table-column prop="phone" label="手机号" width="200" />
       <el-table-column prop="permission" label="用户权限" width="150">
         <template #default="{ row }">
-          <el-tag :type="row.permission === 1 ? 'success' : 'danger'">
+          <el-tag :type="getUserRoleTagType(row)">
             {{ row.permission === 1 ? "管理员" : row.taskPermission === 1 ? "组管理员" : "普通用户" }}
           </el-tag>
         </template>
