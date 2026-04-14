@@ -73,7 +73,7 @@ const selectedLicense = ref<LicenseRequestItem | null>(null)
 
 const getRequestStatusLabel = (row: LicenseRequestItem) => {
   if (isAllocatedLicenseStatus(row.status) && !row.licenseNo) return "待上传"
-  return LICENSE_REQUEST_STATUS_LABELS[row.status] || row.status
+  return LICENSE_REQUEST_STATUS_LABELS[row.status] || "未知状态"
 }
 
 const getRequestStatusType = (row: LicenseRequestItem) => {
@@ -308,7 +308,7 @@ const handleUploadRequest = async (row: LicenseRequestItem, options: UploadReque
     const response = await uploadLicenseFileApi(row.requestId, formData)
     if (response.code !== 200) {
       ElMessage.error(response.message || "上传失败")
-      options.onError?.(new Error(response.message || "upload failed"))
+      options.onError?.(new Error(response.message || "上传失败"))
       return
     }
 
@@ -344,7 +344,7 @@ onMounted(async () => {
     <div class="page-header">
       <div>
         <h2 class="title">管理员许可证管理</h2>
-        <p class="subtitle">统一使用 `/license/requests` 查询许可证申请和已分配记录。</p>
+        <p class="subtitle">集中处理许可证申请审批、文件上传与记录查询。</p>
       </div>
     </div>
 
@@ -376,7 +376,7 @@ onMounted(async () => {
         empty-text="暂无申请记录"
       >
         <el-table-column prop="customerName" label="客户名称" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="macAddress" label="电脑 MAC 地址" min-width="170" show-overflow-tooltip />
+        <el-table-column prop="macAddress" label="设备网卡地址" min-width="170" show-overflow-tooltip />
         <el-table-column prop="userName" label="申请人" min-width="120" />
         <el-table-column prop="categoryName" label="模块类别" min-width="120" />
         <el-table-column prop="moduleName" label="模块名称" min-width="140" />
@@ -433,7 +433,7 @@ onMounted(async () => {
       <div class="section-header">
         <div>
           <h3 class="section-title">已分配许可证</h3>
-          <p class="section-desc">默认显示 `VALID` 和 `OVERDUE` 两类记录，可按状态进一步筛选。</p>
+          <p class="section-desc">默认显示当前已分配的有效与过期许可证记录，可按状态进一步筛选。</p>
         </div>
       </div>
 
@@ -477,7 +477,7 @@ onMounted(async () => {
         <el-descriptions-item label="客户名称">{{ selectedLicense.customerName }}</el-descriptions-item>
         <el-descriptions-item label="模块类别">{{ selectedLicense.categoryName }}</el-descriptions-item>
         <el-descriptions-item label="模块名称">{{ selectedLicense.moduleName }}</el-descriptions-item>
-        <el-descriptions-item label="MAC 地址">{{ selectedLicense.macAddress }}</el-descriptions-item>
+        <el-descriptions-item label="设备网卡地址">{{ selectedLicense.macAddress }}</el-descriptions-item>
         <el-descriptions-item label="使用次数">{{ selectedLicense.usageCount }}</el-descriptions-item>
         <el-descriptions-item label="使用期限">
           {{ selectedLicense.validFrom }} ~ {{ selectedLicense.validTo }}
@@ -493,6 +493,7 @@ onMounted(async () => {
   min-height: calc(100vh - 60px);
   padding: 20px;
   background-color: #fff;
+  font-family: "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
 }
 
 .page-header {
@@ -504,11 +505,14 @@ onMounted(async () => {
 
 .title {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
 }
 
 .subtitle {
   margin: 6px 0 0;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -529,13 +533,14 @@ onMounted(async () => {
 
 .section-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 600;
   color: #111827;
 }
 
 .section-desc {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: 14px;
   color: #6b7280;
 }
 
@@ -550,6 +555,14 @@ onMounted(async () => {
 }
 
 .muted {
+  font-size: 12px;
   color: #9ca3af;
+}
+
+:deep(.el-table),
+:deep(.el-form),
+:deep(.el-descriptions),
+:deep(.el-alert) {
+  font-size: 14px;
 }
 </style>

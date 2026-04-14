@@ -78,6 +78,8 @@ const clearBatchTimers = () => {
   batchDownloadTimers.value.forEach((timer) => clearTimeout(timer))
   batchDownloadTimers.value = []
 }
+
+const licenseSupportMessage = "您当前没有对应的有效许可证申请，请前往许可证管理页面查看，或联系系统管理员获取支持"
 // 用户许可证
 const userLicense = ref<LicenseModule[]>([] as LicenseModule[])
 
@@ -147,7 +149,7 @@ async function downloadNormal(componentId: number, componentName?: string) {
 // 安装组件
 const handleInstallComponent = async (row: Component) => {
   if (!checkComponentLicense(row)) {
-    ElMessage.warning("您目前没有对应有效的许可证申请，请前往许可证管理页面查看，申请联系xx邮箱")
+    ElMessage.warning(licenseSupportMessage)
     return
   }
   try {
@@ -236,7 +238,7 @@ onMounted(async () => {
   await getComponentList()
   await getLicenseStatus()
   if (!hasLicenseApplication.value && !licenseWarned.value) {
-    ElMessage.warning("您目前没有对应有效的许可证申请，请前往许可证管理页面查看，申请联系xx邮箱")
+    ElMessage.warning(licenseSupportMessage)
     licenseWarned.value = true
   }
 })
@@ -251,9 +253,15 @@ onUnmounted(() => {
   width: 100%;
   margin: 20px auto;
   padding: 0 20px;
+  font-family: "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
 }
 .el-table {
   margin: 20px 0;
   flex-grow: 1;
+  font-size: 14px;
+}
+
+.question-icon {
+  color: var(--el-color-primary);
 }
 </style>
