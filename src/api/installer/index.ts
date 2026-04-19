@@ -18,4 +18,16 @@ const installComponent = (componentId: number) => {
   })
 }
 
-export { getComponents, installComponent }
+const installComponentsBatch = (componentIds: number[]) => {
+  const params = new URLSearchParams()
+  componentIds.forEach((id) => params.append("componentIds", String(id)))
+
+  return request<Blob>({
+    url: "/components/install/batch",
+    method: "get",
+    params,
+    responseType: "blob"
+  })
+}
+
+export { getComponents, installComponent, installComponentsBatch }
