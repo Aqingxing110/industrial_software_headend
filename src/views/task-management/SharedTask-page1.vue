@@ -90,6 +90,13 @@
         <el-form-item label="项目名称" prop="project_name">
           <el-input v-model="projectForm.project_name" autocomplete="off" />
         </el-form-item>
+        <el-form-item label="仿真类型" prop="simulation_type">
+          <el-select v-model="projectForm.simulation_type" autocomplete="off">
+            <el-option label="结构动力学" value="type1" />
+            <el-option label="冲击动力学" value="type2" />
+            <el-option label="多体动力学" value="type3" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="创建者">
           <el-input v-model="projectForm.creator" disabled />
         </el-form-item>
@@ -159,11 +166,13 @@ const createProjectDialogVisible = ref(false)
 const projectFormRef = ref()
 const projectForm = ref({
   project_name: "",
+  simulation_type: "",
   creator: "",
   organization: ""
 })
 const projectRules = ref({
-  project_name: [{ required: true, message: "项目名称不能为空", trigger: "blur" }]
+  project_name: [{ required: true, message: "项目名称不能为空", trigger: "blur" }],
+  simulation_type: [{ required: true, message: "请选择仿真类型", trigger: "change" }]
 })
 
 // 获取分页项目数据

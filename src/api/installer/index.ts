@@ -10,24 +10,22 @@ const getComponents = () => {
 }
 
 const installComponent = (componentId: number) => {
-  return request<Blob>({
-    url: "/components/install",
-    method: "get",
-    params: { componentId },
-    responseType: "blob"
+  return request<ApiResponse<{ downloadUrl: string }>>({
+    url: `/components/install/${componentId}/download-token`,
+    method: "post"
   })
 }
 
-const installComponentsBatch = (componentIds: number[]) => {
-  const params = new URLSearchParams()
-  componentIds.forEach((id) => params.append("componentIds", String(id)))
+// const installComponentsBatch = (componentIds: number[]) => {
+//   const params = new URLSearchParams()
+//   componentIds.forEach((id) => params.append("componentIds", String(id)))
 
-  return request<Blob>({
-    url: "/components/install/batch",
-    method: "get",
-    params,
-    responseType: "blob"
-  })
-}
+//   return request<Blob>({
+//     url: "/components/install/batch",
+//     method: "get",
+//     params,
+//     responseType: "blob"
+//   })
+// }
 
-export { getComponents, installComponent, installComponentsBatch }
+export { getComponents, installComponent }
