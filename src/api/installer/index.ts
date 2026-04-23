@@ -16,16 +16,12 @@ const installComponent = (componentId: number) => {
   })
 }
 
-// const installComponentsBatch = (componentIds: number[]) => {
-//   const params = new URLSearchParams()
-//   componentIds.forEach((id) => params.append("componentIds", String(id)))
+const installComponentsBatch = (componentIds: number[]) => {
+  return request<ApiResponse<{ downloadUrl: string }>>({
+    url: "/components/install/batch/stream-token",
+    method: "post",
+    data: { componentIds }
+  })
+}
 
-//   return request<Blob>({
-//     url: "/components/install/batch",
-//     method: "get",
-//     params,
-//     responseType: "blob"
-//   })
-// }
-
-export { getComponents, installComponent }
+export { getComponents, installComponent, installComponentsBatch }

@@ -1,6 +1,6 @@
 <template>
   <div class="component-page">
-    <div v-if="false" class="batch-operation mb-4">
+    <div class="batch-operation mb-4">
       <el-button type="primary" size="small" @click="handleBatchInstall" :disabled="selectedComponents.length === 0">
         批量下载选中组件
       </el-button>
@@ -18,7 +18,7 @@
       row-key="id"
     >
       <!-- 新增勾选列 -->
-      <!-- <el-table-column type="selection" width="55" :reserve-selection="true" /> -->
+      <el-table-column type="selection" width="55" :reserve-selection="true" />
       <el-table-column prop="name" label="组件名称" min-width="200">
         <template #default="scope">
           <div class="name-with-tooltip">
@@ -51,7 +51,7 @@ import { ref, onMounted, onUnmounted } from "vue"
 import { ElMessage, ElMessageBox } from "element-plus"
 import { QuestionFilled } from "@element-plus/icons-vue"
 import type { Component } from "@/api/installer/types"
-import { getComponents, installComponent } from "@/api/installer"
+import { getComponents, installComponent, installComponentsBatch } from "@/api/installer"
 import { getLicenseRequestsByUserIdApi } from "@/api/license"
 import { useUserStore } from "@/store/modules/user"
 import type { ElTable } from "element-plus"
@@ -135,14 +135,19 @@ async function downloadNormal(componentId?: number, componentIds?: number[], com
     if (componentId !== undefined) {
       downloadUrl = await installComponent(componentId).then((res) => {
         if (res.code === 200) {
-          debugger
           return res.data.downloadUrl
         } else {
           throw new Error(res.message || "获取下载链接失败")
         }
       })
-      // } else if (componentIds !== undefined) {
-      // downloadUrl = await installComponentsBatch(componentIds)
+    } else if (componentIds !== undefined) {
+      downloadUrl = await installComponentsBatch(componentIds).then((res) => {
+        if (res.code === 200) {
+          return res.data.downloadUrl
+        } else {
+          throw new Error(res.message || "获取下载链接失败")
+        }
+      })
     } else {
       throw new Error("未提供组件ID")
     }
@@ -150,7 +155,7 @@ async function downloadNormal(componentId?: number, componentIds?: number[], com
     window.location.href = downloadUrl
     ElMessage.success(`下载${componentName || "组件"}已开始`)
   } catch (error) {
-    console.error("下载失败", error)
+    console.error("获取下载链接失败", error)
   }
 }
 
