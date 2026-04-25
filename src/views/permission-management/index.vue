@@ -366,7 +366,7 @@ const updateUserOrganization = async (user: PermissionUser | null, newOrgId: str
 const getUserRoleTagType = (row: PermissionUser) => {
   if (row.permission === 1) return "primary"
   if (row.taskPermission === 1) return "success"
-  return "info"
+  return "warning"
 }
 </script>
 

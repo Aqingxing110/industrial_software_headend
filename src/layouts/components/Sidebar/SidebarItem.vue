@@ -64,8 +64,8 @@ const resolvePath = (routePath: string) => {
 <template>
   <div
     v-if="!props.item.meta?.hidden"
-    :class="{ 'simple-mode': props.isCollapse && !isTop, 'first-level': props.isFirstLevel }"
-    :style="{ 'padding-left': `${(props.level - 1) * 20}px` }"
+    :class="[`menu-level-${props.level}`, { 'simple-mode': props.isCollapse && !isTop, 'first-level': props.isFirstLevel }]"
+    :style="{ 'padding-left': `${(props.level - 1) * 16}px` }"
   >
     <template v-if="!alwaysShowRootMenu && theOnlyOneChild && !theOnlyOneChild.children">
       <SidebarItemLink v-if="theOnlyOneChild.meta" :to="resolvePath(theOnlyOneChild.path)">
@@ -100,16 +100,74 @@ const resolvePath = (routePath: string) => {
 </template>
 
 <style lang="scss" scoped>
+// 原有样式保留，新增/修改以下样式
 .svg-icon {
   min-width: 1em;
   margin-right: 12px;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .el-icon {
   width: 1em;
   margin-right: 12px;
-  font-size: 18px;
+  font-size: 16px;
+}
+
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  min-height: 44px;
+  font-family: "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
+  line-height: 1.4;
+}
+
+.menu-level-1 {
+  :deep(.el-menu-item),
+  :deep(.el-sub-menu__title) {
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
+
+.menu-level-2 {
+  :deep(.el-menu-item),
+  :deep(.el-sub-menu__title) {
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.menu-level-3 {
+  :deep(.el-menu-item),
+  :deep(.el-sub-menu__title) {
+    font-size: 13px;
+  }
+}
+
+.menu-level-4 {
+  :deep(.el-menu-item),
+  :deep(.el-sub-menu__title) {
+    font-size: 12px;
+  }
+}
+
+// 核心：调整子菜单箭头位置
+:deep(.el-sub-menu) {
+  .el-sub-menu__title {
+    // 让标题容器变成弹性布局，方便箭头左移
+    display: flex;
+    align-items: center;
+    // 预留箭头位置（可选，根据需求调整）
+    padding-left: 0 !important;
+  }
+
+  // 箭头默认在右侧，强制移到左侧
+  .el-sub-menu__icon-arrow {
+    position: static !important;
+    order: -1;
+    margin-right: 8px !important;
+    margin-left: 8px !important;
+    transition: transform 0.3s;
+  }
 }
 
 .simple-mode {

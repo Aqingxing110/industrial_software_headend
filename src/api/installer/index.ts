@@ -10,12 +10,18 @@ const getComponents = () => {
 }
 
 const installComponent = (componentId: number) => {
-  return request<Blob>({
-    url: "/components/install",
-    method: "get",
-    params: { componentId },
-    responseType: "blob"
+  return request<ApiResponse<{ downloadUrl: string }>>({
+    url: `/components/install/${componentId}/download-token`,
+    method: "post"
   })
 }
 
-export { getComponents, installComponent }
+const installComponentsBatch = (componentIds: number[]) => {
+  return request<ApiResponse<{ downloadUrl: string }>>({
+    url: "/components/install/batch/stream-token",
+    method: "post",
+    data: { componentIds }
+  })
+}
+
+export { getComponents, installComponent, installComponentsBatch }

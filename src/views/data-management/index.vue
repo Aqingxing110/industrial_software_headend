@@ -77,9 +77,7 @@ const fetchProjects = async () => {
   try {
     const params = { pageNum: 1, pageSize: 200, keyword: "" }
     const response =
-      projectScope.value === "shared"
-        ? await getSharedProjectsApi(params)
-        : await getPrivateProjectsApi(params)
+      projectScope.value === "shared" ? await getSharedProjectsApi(params) : await getPrivateProjectsApi(params)
 
     projects.value = response.data?.records || []
     selectedProjectId.value = projects.value.length > 0 ? projects.value[0].projectId : undefined
@@ -412,6 +410,7 @@ onMounted(async () => {
 
 <template>
   <div class="data-management-container">
+    <div class="preview-tip">提示：请预先截取一张具有代表性的仿真图片，作为预览图进行上传。</div>
     <div class="top-bar">
       <el-radio-group v-model="projectScope" @change="handleScopeChange">
         <el-radio-button label="shared">公开项目</el-radio-button>
@@ -450,7 +449,7 @@ onMounted(async () => {
       <el-table-column prop="fileName" label="文件名" min-width="200" />
       <el-table-column label="项目" width="180">
         <template #default="{ row }">
-          <span>{{ row.projectName || '-' }}</span>
+          <span>{{ row.projectName || "-" }}</span>
         </template>
       </el-table-column>
       <el-table-column label="权限" width="110" align="center">
@@ -497,7 +496,7 @@ onMounted(async () => {
     <el-dialog v-model="showUploadDialog" title="上传文件" width="500px" @close="resetUploadForm">
       <el-form :model="uploadForm" label-width="90px">
         <el-form-item label="项目">
-          <div>{{ getSelectedProject()?.project_name || '-' }}</div>
+          <div>{{ getSelectedProject()?.project_name || "-" }}</div>
         </el-form-item>
 
         <el-form-item label="文件名" required>
@@ -554,6 +553,16 @@ onMounted(async () => {
 </template>
 
 <style scoped lang="scss">
+.preview-tip {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #ffe58f;
+  background: #fffbe6;
+  color: #8c6d1f;
+  font-size: 13px;
+}
+
 .data-management-container {
   padding: 20px;
   background-color: #fff;

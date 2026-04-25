@@ -166,7 +166,8 @@ const startByTaskType = () => {
     const exeTypeMap = {
       结构: "structure",
       冲击: "impact",
-      多体: "multibody"
+      多体: "multibody",
+      流固弱耦合: "weakFluid-SolidCoupling"
     }
 
     const mappedType = exeTypeMap[taskType.value]
@@ -291,13 +292,12 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <div class="preview-tip">提示：可截取一张有代表性的仿真图片，后续在数据管理上传数据库文件时可作为预览图使用。</div>
-
     <!-- 按钮区域 -->
     <div class="button-group">
       <button @click="startExe('structure')" :disabled="isExeRunning || positionLock">结构</button>
       <button @click="startExe('impact')" :disabled="isExeRunning || positionLock">冲击</button>
       <button @click="startExe('multibody')" :disabled="isExeRunning || positionLock">多体</button>
+      <button @click="startExe('weakFluidSolidCoupling')" :disabled="isExeRunning || positionLock">流固弱耦合</button>
     </div>
 
     <!-- 新增计算资源选择区域 -->
@@ -329,16 +329,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.preview-tip {
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid #ffe58f;
-  background: #fffbe6;
-  color: #8c6d1f;
-  font-size: 13px;
-}
-
 .button-group {
   margin-bottom: 10px;
 }

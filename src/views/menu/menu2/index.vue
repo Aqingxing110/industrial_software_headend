@@ -156,8 +156,9 @@ const cellStyle = ({ columnIndex }) => {
   // row 行
   // column 列
   if (columnIndex === 0) {
-    return { color: "	#FF0000" }
+    return { color: "#FF0000" }
   }
+  return {}
 }
 </script>
 

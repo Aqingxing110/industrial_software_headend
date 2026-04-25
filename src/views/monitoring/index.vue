@@ -135,7 +135,7 @@ const sortTasks = (tasks: Task[]): Task[] => {
 // 验证选中的任务/服务器是否合法
 const validateSelection = (): boolean => {
   if (selectedTasks.value.length === 0 && selectedServers.value.length === 0) {
-    ElMessage.warning("请至少选择一个任务或服务器！")
+    ElMessage.warning("请至少选择一个任务或服务器")
     return false
   }
   return true
@@ -155,7 +155,7 @@ const fetchServers = async () => {
     totalServers.value = response.data.total
   } catch (e: any) {
     console.error("获取服务器列表失败:", e.message || e)
-    ElMessage.error("获取服务器列表失败")
+    ElMessage.error("获取服务器列表失败，请稍后重试")
   } finally {
     isLoading.value = false
     selectedServers.value = []
@@ -176,7 +176,7 @@ const fetchTasks = async () => {
     tasks.value = sortTasks(response.data.records)
     totalTasks.value = response.data.total
   } catch (e: any) {
-    ElMessage.error("获取任务列表失败：" + e.message)
+    ElMessage.error("获取任务列表失败，请稍后重试")
   } finally {
     selectedTasks.value = []
     isTaskLoading.value = false
@@ -185,7 +185,7 @@ const fetchTasks = async () => {
 
 // 调整服务器可用资源
 const handleSubmitResource = async () => {
-  if (!currentServer.value) return ElMessage.warning("未选择服务器")
+  if (!currentServer.value) return ElMessage.warning("请先选择服务器")
 
   try {
     const res = await changeServerResource(currentServer.value.id, serverResourceForm.specification)
@@ -195,7 +195,7 @@ const handleSubmitResource = async () => {
     synchronousCloudServer()
     fetchServers()
   } catch (err: any) {
-    ElMessage.error(err.message || "服务器资源调整失败")
+    ElMessage.error("服务器资源调整失败，请稍后重试")
     console.error(err)
   }
 }
@@ -212,7 +212,7 @@ const handleSubmitPriority = async () => {
     }
     fetchTasks()
   } catch (err) {
-    ElMessage.error("任务优先级调整失败")
+    ElMessage.error("任务优先级调整失败，请稍后重试")
     console.error(err)
   } finally {
     currentTask.value = null
@@ -250,7 +250,7 @@ const triggerAutoAllocate = async () => {
       // } else {
       //   ElMessage.error(`分配失败：${res.message}`)
       // }
-      ElMessage.success("资源分配成功！")
+      ElMessage.success("资源分配成功")
       fetchServers()
       fetchTasks()
       selectedTasks.value = []
@@ -258,7 +258,7 @@ const triggerAutoAllocate = async () => {
     }
   } catch (error) {
     if (error !== "cancel") {
-      ElMessage.error("资源分配异常，请重试！")
+      ElMessage.error("资源分配异常，请稍后重试")
       console.error("分配失败：", error)
     }
   } finally {
@@ -318,7 +318,7 @@ const openServerResourceDialog = async (server: Server) => {
     })
     showServerResourceDialog.value = true
   } catch (err: any) {
-    ElMessage.error(err.message || "获取可调整规格异常，请稍后重试")
+    ElMessage.error("获取可调整规格失败，请稍后重试")
     showServerResourceDialog.value = false
   }
 }
@@ -354,7 +354,7 @@ onMounted(() => {
         <!-- 服务器搜索 / 筛选 -->
         <div class="header">
           <div class="search-container">
-            <el-input v-model="searchQuery" placeholder="搜索服务器名称或IP" clearable @keyup.enter="fetchServers" />
+            <el-input v-model="searchQuery" placeholder="搜索服务器名称或网络地址" clearable @keyup.enter="fetchServers" />
             <el-button type="primary" @click="fetchServers" :loading="isLoading">搜索</el-button>
           </div>
           <div class="button-group">
@@ -385,7 +385,7 @@ onMounted(() => {
         >
           <el-table-column type="selection" width="55" />
           <el-table-column prop="name" label="服务器名称" min-width="150" />
-          <el-table-column prop="ip" label="IP地址" width="130" />
+          <el-table-column prop="ip" label="网络地址" width="130" />
           <el-table-column prop="specification" label="服务器规格" width="150" />
           <el-table-column prop="source" label="可用资源" width="120">
             <template #default="{ row }"> {{ row.cpuCores }} 核 / {{ row.memory }} GB </template>
@@ -397,7 +397,7 @@ onMounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="CPU使用率" width="150">
+          <el-table-column label="处理器使用率" width="150">
             <template #default="{ row }">
               <div class="progress-cell">
                 <span>{{ row.cpuUsage }}%</span>
@@ -443,7 +443,7 @@ onMounted(() => {
         />
       </el-tab-pane>
 
-      <el-tab-pane label="任务管理" name="task">
+        <el-tab-pane label="任务管理" name="task">
         <!-- 任务搜索 / 筛选 -->
         <div class="header">
           <div class="search-container">
@@ -548,7 +548,7 @@ onMounted(() => {
 
     <!-- 服务器可用资源调整弹窗 -->
     <el-dialog v-model="showServerResourceDialog" title="调整服务器规格" width="400px">
-      <el-form :model="serverResourceForm" label-width="100px">
+        <el-form :model="serverResourceForm" label-width="100px">
         <el-form-item label="服务器规格">
           <el-select v-model="serverResourceForm.specification" placeholder="请选择可调整规格" @change="onSpecChange">
             <el-option
@@ -559,7 +559,7 @@ onMounted(() => {
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="CPU核心数">
+        <el-form-item label="处理器核心数">
           <el-input v-model="serverResourceForm.cpuCore" disabled />
         </el-form-item>
         <el-form-item label="内存大小(GB)">

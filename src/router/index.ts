@@ -118,7 +118,7 @@ export const constantRoutes: RouteRecordRaw[] = [
         path: "/installer",
         component: () => import("@/views/installer/index.vue"),
         name: "Installer",
-        meta: { title: "组件安装包管理" }
+        meta: { title: "组件安装包管理", svgIcon: "component" }
       },
       {
         path: "personal-center",
@@ -163,7 +163,7 @@ export const asyncRoutes: RouteRecordRaw[] = [
     component: Layouts,
     redirect: "/license/apply",
     name: "License",
-    meta: { title: "许可证管理", svgIcon: "component" },
+    meta: { title: "许可证管理", svgIcon: "license" },
     children: [
       {
         path: "apply",

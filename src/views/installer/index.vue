@@ -1,13 +1,13 @@
 <template>
   <div class="component-page">
-    <!-- <div class="batch-operation mb-4">
+    <div class="batch-operation mb-4">
       <el-button type="primary" size="small" @click="handleBatchInstall" :disabled="selectedComponents.length === 0">
         批量下载选中组件
       </el-button>
       <el-button type="default" size="small" @click="clearSelection" :disabled="selectedComponents.length === 0">
         清空选中
       </el-button>
-    </div> -->
+    </div>
     <el-table
       ref="componentTableRef"
       :data="components"
@@ -18,7 +18,7 @@
       row-key="id"
     >
       <!-- 新增勾选列 -->
-      <!-- <el-table-column type="selection" width="55" :reserve-selection="true" /> -->
+      <el-table-column type="selection" width="55" :reserve-selection="true" />
       <el-table-column prop="name" label="组件名称" min-width="200">
         <template #default="scope">
           <div class="name-with-tooltip">
@@ -48,11 +48,10 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue"
-// import { ElMessage, ElMessageBox } from "element-plus"
-import { ElMessage } from "element-plus"
+import { ElMessage, ElMessageBox } from "element-plus"
 import { QuestionFilled } from "@element-plus/icons-vue"
 import type { Component } from "@/api/installer/types"
-import { getComponents, installComponent } from "@/api/installer"
+import { getComponents, installComponent, installComponentsBatch } from "@/api/installer"
 import { getLicenseRequestsByUserIdApi } from "@/api/license"
 import { useUserStore } from "@/store/modules/user"
 import type { ElTable } from "element-plus"
@@ -78,6 +77,8 @@ const clearBatchTimers = () => {
   batchDownloadTimers.value.forEach((timer) => clearTimeout(timer))
   batchDownloadTimers.value = []
 }
+
+const licenseSupportMessage = "您当前没有对应的有效许可证申请，请前往许可证管理页面查看，或联系系统管理员获取支持"
 // 用户许可证
 const userLicense = ref<LicenseModule[]>([] as LicenseModule[])
 
@@ -126,32 +127,46 @@ const getComponentList = async () => {
   }
 }
 
-// 调用普通下载
-async function downloadNormal(componentId: number, componentName?: string) {
+// 调用下载
+async function downloadNormal(componentId?: number, componentIds?: number[], componentName?: string) {
   try {
-    // 直接拿到 blob（文件流）
-    const blob = await installComponent(componentId)
+    // let blob: Blob
+    let downloadUrl: string
+    if (componentId !== undefined) {
+      downloadUrl = await installComponent(componentId).then((res) => {
+        if (res.code === 200) {
+          return res.data.downloadUrl
+        } else {
+          throw new Error(res.message || "获取下载链接失败")
+        }
+      })
+    } else if (componentIds !== undefined) {
+      downloadUrl = await installComponentsBatch(componentIds).then((res) => {
+        if (res.code === 200) {
+          return res.data.downloadUrl
+        } else {
+          throw new Error(res.message || "获取下载链接失败")
+        }
+      })
+    } else {
+      throw new Error("未提供组件ID")
+    }
 
-    // 下载保存
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = componentName ? `${componentName}.exe` : "component.exe"
-    a.click()
-    URL.revokeObjectURL(url)
+    window.location.href = downloadUrl
+    ElMessage.success(`下载${componentName || "组件"}已开始`)
   } catch (error) {
-    console.error("下载失败", error)
+    console.error("获取下载链接失败", error)
   }
 }
 
 // 安装组件
 const handleInstallComponent = async (row: Component) => {
   if (!checkComponentLicense(row)) {
-    ElMessage.warning("您目前没有对应有效的许可证申请，请前往许可证管理页面查看，申请联系xx邮箱")
+    ElMessage.warning(licenseSupportMessage)
     return
   }
   try {
-    await downloadNormal(row.id, row.name)
+    await downloadNormal(row.id, undefined, row.name)
   } catch (err) {
     ElMessage.error("下载失败，请稍后重试")
     console.error("下载组件失败：", err)
@@ -163,80 +178,61 @@ const handleSelectionChange = (val: Component[]) => {
   selectedComponents.value = val
 }
 
-// 批量下载组件
-// const handleBatchInstall = async () => {
-//   // 先清理旧的定时器，避免残留
-//   clearBatchTimers()
+//批量下载组件
+const handleBatchInstall = async () => {
+  // 先清理旧的定时器，避免残留
+  clearBatchTimers()
 
-//   // 1. 筛选有权限的组件
-//   const licensedComponents = selectedComponents.value.filter((component) => checkComponentLicense(component))
-//   // 2. 筛选无权限的组件
-//   const unlicensedComponents = selectedComponents.value.filter((component) => !checkComponentLicense(component))
-//   // 3. 从有权限的组件中筛选有下载地址的
-//   const validComponents = licensedComponents.filter((item) => item.address && item.address.trim())
-//   // 4. 有权限但无下载地址的组件
-//   const licensedButNoAddress = licensedComponents.filter((item) => !item.address || !item.address.trim())
+  // 1. 筛选有权限的组件
+  const licensedComponents = selectedComponents.value.filter((component) => checkComponentLicense(component))
+  // 2. 筛选无权限的组件
+  const unlicensedComponents = selectedComponents.value.filter((component) => !checkComponentLicense(component))
 
-//   // 无任何有权限的组件
-//   if (licensedComponents.length === 0) {
-//     ElMessage.warning(`选中的所有组件均无对应有效的许可证申请，请前往许可证管理页面查看，申请联系xx邮箱`)
-//     return
-//   }
+  // 无任何有权限的组件
+  if (licensedComponents.length === 0) {
+    ElMessage.warning(`选中的所有组件均无对应有效的许可证申请，请前往许可证管理页面查看，申请联系xx邮箱`)
+    return
+  }
 
-//   // 提示无权限的组件
-//   if (unlicensedComponents.length > 0) {
-//     const unlicensedNames = unlicensedComponents.map((item) => item.name).join("、")
-//     ElMessage.warning(`以下组件无对应许可证权限，无法下载：${unlicensedNames}`)
-//   }
+  // 提示无权限的组件
+  if (unlicensedComponents.length > 0) {
+    const unlicensedNames = unlicensedComponents.map((item) => item.name).join("、")
+    ElMessage.warning(`以下组件无对应许可证权限，无法下载：${unlicensedNames}`)
+  }
 
-//   // 批量打开下载地址
-//   if (validComponents.length > 0) {
-//     ElMessageBox.confirm(
-//       `即将为您打开【${validComponents.length}】个有权限且有下载地址的组件下载链接，是否继续？`,
-//       "批量下载确认",
-//       {
-//         confirmButtonText: "确定",
-//         cancelButtonText: "取消",
-//         type: "info"
-//       }
-//     ).then(() => {
-//       validComponents.forEach((item, index) => {
-//         // 存储定时器实例
-//         const timer = setTimeout(() => {
-//           window.open(item.address, "_blank")
-//         }, 300 * index)
-//         batchDownloadTimers.value.push(timer)
-//       })
-//       // 提示有权限但无下载地址的组件
-//       if (licensedButNoAddress.length > 0) {
-//         const invalidNames = licensedButNoAddress.map((item) => item.name).join("、")
-//         ElMessage.warning(`以下组件有许可证权限但暂无下载地址：${invalidNames}`)
-//       }
-//     })
-//   } else {
-//     // 有权限但全部无下载地址
-//     ElMessage.warning("选中的有权限组件均无有效下载地址")
-//   }
+  // 批量打开下载地址
+  ElMessageBox.confirm(
+    `即将为您打开【${licensedComponents.length}】个有权限的组件下载链接，是否继续？`,
+    "批量下载确认",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "info"
+    }
+  ).then(async () => {
+    const componentIds = licensedComponents.map((component) => component.id)
+    await downloadNormal(undefined, componentIds)
+  })
 
-//   clearSelection()
-// }
+  clearSelection()
+}
 
-// 清空选中
-// const clearSelection = () => {
-//   clearBatchTimers()
+//清空选中
+const clearSelection = () => {
+  clearBatchTimers()
 
-//   if (componentTableRef.value) {
-//     componentTableRef.value.clearSelection()
-//   }
-//   selectedComponents.value = []
-// }
+  if (componentTableRef.value) {
+    componentTableRef.value.clearSelection()
+  }
+  selectedComponents.value = []
+}
 
 // 页面加载时获取组件列表
 onMounted(async () => {
   await getComponentList()
   await getLicenseStatus()
   if (!hasLicenseApplication.value && !licenseWarned.value) {
-    ElMessage.warning("您目前没有对应有效的许可证申请，请前往许可证管理页面查看，申请联系xx邮箱")
+    ElMessage.warning(licenseSupportMessage)
     licenseWarned.value = true
   }
 })
@@ -251,9 +247,15 @@ onUnmounted(() => {
   width: 100%;
   margin: 20px auto;
   padding: 0 20px;
+  font-family: "PingFang SC", "Microsoft YaHei", "微软雅黑", sans-serif;
 }
 .el-table {
   margin: 20px 0;
   flex-grow: 1;
+  font-size: 14px;
+}
+
+.question-icon {
+  color: var(--el-color-primary);
 }
 </style>
