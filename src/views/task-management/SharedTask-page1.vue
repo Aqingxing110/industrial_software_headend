@@ -53,6 +53,11 @@
           <router-link :to="`/task-management/shared/${row.projectId}`">{{ row.project_name }}</router-link>
         </template>
       </el-table-column>
+      <el-table-column prop="simulationType" label="仿真类型" width="140">
+        <template #default="{ row }">
+          {{ row.simulationType || "-" }}
+        </template>
+      </el-table-column>
       <el-table-column prop="creator" label="创建者" />
       <el-table-column prop="creation_time" label="创建时间" />
       <el-table-column label="操作" width="280">
@@ -90,6 +95,11 @@
         <el-form-item label="项目名称" prop="project_name">
           <el-input v-model="projectForm.project_name" autocomplete="off" />
         </el-form-item>
+        <el-form-item label="仿真类型" prop="simulation_type">
+          <el-select v-model="projectForm.simulation_type" placeholder="请选择仿真类型" style="width: 100%">
+            <el-option v-for="item in simulationTypeOptions" :key="item" :label="item" :value="item" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="创建者">
           <el-input v-model="projectForm.creator" disabled />
         </el-form-item>
@@ -113,6 +123,8 @@ import {
   ElTableColumn,
   ElButton,
   ElInput,
+  ElSelect,
+  ElOption,
   ElPagination,
   ElDialog,
   ElForm,
@@ -132,6 +144,7 @@ import {
 
 const router = useRouter()
 
+import { SIMULATION_TYPE_OPTIONS } from "@/api/projectManagement/types"
 import type { project } from "@/api/projectManagement/shared/projectManagement/types/projectManagement"
 
 // 添加组织信息响应式变量
@@ -159,12 +172,16 @@ const createProjectDialogVisible = ref(false)
 const projectFormRef = ref()
 const projectForm = ref({
   project_name: "",
+  simulation_type: SIMULATION_TYPE_OPTIONS[0],
   creator: "",
   organization: ""
 })
 const projectRules = ref({
-  project_name: [{ required: true, message: "项目名称不能为空", trigger: "blur" }]
+  project_name: [{ required: true, message: "项目名称不能为空", trigger: "blur" }],
+  simulation_type: [{ required: true, message: "请选择仿真类型", trigger: "change" }]
 })
+
+const simulationTypeOptions = SIMULATION_TYPE_OPTIONS
 
 // 获取分页项目数据
 const fetchProject = async (forceUpdate = false) => {
@@ -214,6 +231,12 @@ const handleCreateProject = async () => {
         ElMessage.success("项目创建成功")
         await fetchProject(true)
         createProjectDialogVisible.value = false
+        projectForm.value = {
+          project_name: "",
+          simulation_type: SIMULATION_TYPE_OPTIONS[0],
+          creator: currentUser.value,
+          organization: projectForm.value.organization
+        }
       } catch (error) {
         console.error("新建项目失败:", error)
         ElMessage.error("新建项目失败")

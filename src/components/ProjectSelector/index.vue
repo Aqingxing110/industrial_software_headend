@@ -27,6 +27,7 @@
             </div>
             <div class="project-info">
               <span class="text-gray">创建人：{{ proj.creator }}</span>
+              <span class="text-gray">仿真类型：{{ proj.simulationType || "-" }}</span>
               <span v-if="proj.organization" class="text-gray">组织：{{ proj.organization }}</span>
             </div>
           </div>
@@ -45,6 +46,10 @@
           clearable
           @keyup.enter="handleCreateProject"
         />
+
+        <el-select v-model="newProjectSimulationType" placeholder="请选择仿真类型" style="width: 100%; margin-top: 12px">
+          <el-option v-for="item in simulationTypeOptions" :key="item" :label="item" :value="item" />
+        </el-select>
 
         <div class="project-type-select">
           <el-radio v-model="newProjectType" label="private">私有项目</el-radio>
@@ -81,8 +86,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue"
-import { ElMessage } from "element-plus"
+import { ElMessage, ElSelect, ElOption } from "element-plus"
 import { QuestionFilled } from "@element-plus/icons-vue"
+import { SIMULATION_TYPE_OPTIONS } from "@/api/projectManagement/types"
 import {
   getAccessibleProjectsApi,
   createPrivateProjectApi,
@@ -116,8 +122,10 @@ const selectedProject = ref<Project | null>(null)
 const loading = ref(false)
 const creating = ref(false)
 const newProjectName = ref("")
+const newProjectSimulationType = ref(SIMULATION_TYPE_OPTIONS[0])
 const newProjectType = ref<"private" | "shared">("private")
 const searchKeyword = ref("")
+const simulationTypeOptions = SIMULATION_TYPE_OPTIONS
 
 // 计算属性
 const filteredProjects = computed(() => {
@@ -164,15 +172,21 @@ const handleCreateProject = async () => {
     return
   }
 
+  if (!newProjectSimulationType.value) {
+    ElMessage.warning("请选择仿真类型")
+    return
+  }
+
   try {
     creating.value = true
     if (newProjectType.value === "private") {
-      await createPrivateProjectApi(newProjectName.value)
+      await createPrivateProjectApi(newProjectName.value, newProjectSimulationType.value)
     } else {
-      await createSharedProjectApi(newProjectName.value)
+      await createSharedProjectApi(newProjectName.value, newProjectSimulationType.value)
     }
     ElMessage.success("项目创建成功")
     newProjectName.value = ""
+    newProjectSimulationType.value = SIMULATION_TYPE_OPTIONS[0]
     newProjectType.value = "private"
     // 刷新项目列表
     await fetchProjects()
@@ -200,6 +214,7 @@ const handleClose = () => {
   dialogVisible.value = false
   selectedProject.value = null
   newProjectName.value = ""
+  newProjectSimulationType.value = SIMULATION_TYPE_OPTIONS[0]
   newProjectType.value = "private"
 }
 

@@ -24,6 +24,11 @@
     >
       <el-table-column type="index" label="序号" width="60" />
       <el-table-column prop="project_name" label="项目名称" min-width="150" />
+      <el-table-column prop="simulationType" label="仿真类型" min-width="140">
+        <template #default="{ row }">
+          {{ row.simulationType || "-" }}
+        </template>
+      </el-table-column>
       <el-table-column label="项目类型" width="100" align="center">
         <template #default="{ row }">
           <el-tag :type="getProjectType(row).type">
@@ -97,6 +102,11 @@
             @keyup.enter="handleCreateProject"
           />
         </el-form-item>
+        <el-form-item label="仿真类型" prop="simulationType">
+          <el-select v-model="formData.simulationType" placeholder="请选择仿真类型" style="width: 100%">
+            <el-option v-for="item in simulationTypeOptions" :key="item" :label="item" :value="item" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="项目类型" prop="projectType">
           <el-radio-group v-model="formData.projectType">
             <el-radio label="private">私有</el-radio>
@@ -116,8 +126,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue"
-import { ElMessage, ElMessageBox } from "element-plus"
+import { ElMessage, ElMessageBox, ElSelect, ElOption } from "element-plus"
 import { Plus } from "@element-plus/icons-vue"
+import { SIMULATION_TYPE_OPTIONS } from "@/api/projectManagement/types"
 import {
   getAccessibleProjectsApi,
   createPrivateProjectApi,
@@ -139,8 +150,11 @@ const pageSize = ref(10)
 
 const formData = ref({
   projectName: "",
+  simulationType: SIMULATION_TYPE_OPTIONS[0],
   projectType: "private" as "private" | "shared"
 })
+
+const simulationTypeOptions = SIMULATION_TYPE_OPTIONS
 
 // 计算属性
 const filteredProjects = computed(() => {
@@ -191,16 +205,21 @@ const handleCreateProject = async () => {
     return
   }
 
+  if (!formData.value.simulationType) {
+    ElMessage.warning("请选择仿真类型")
+    return
+  }
+
   try {
     creating.value = true
     if (formData.value.projectType === "private") {
-      await createPrivateProjectApi(formData.value.projectName)
+      await createPrivateProjectApi(formData.value.projectName, formData.value.simulationType)
     } else {
-      await createSharedProjectApi(formData.value.projectName)
+      await createSharedProjectApi(formData.value.projectName, formData.value.simulationType)
     }
     ElMessage.success("项目创建成功")
     showCreateDialog.value = false
-    formData.value = { projectName: "", projectType: "private" }
+    formData.value = { projectName: "", simulationType: SIMULATION_TYPE_OPTIONS[0], projectType: "private" }
     await fetchProjects()
   } catch (error: any) {
     console.error("创建项目失败:", error)

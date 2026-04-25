@@ -3,6 +3,8 @@ export interface project {
   projectId: number
   // 项目名称
   project_name: string
+  // 仿真类型
+  simulationType?: "结构动力学" | "冲击动力学" | "多体动力学"
   // 项目创建者:当前登录的用户
   // creator: string
   // 项目所属组织（和创建者所属的组织一致）

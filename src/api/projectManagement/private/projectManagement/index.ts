@@ -21,7 +21,7 @@ export function getProjectsApi(data: { pageNum: number; pageSize: number; keywor
 }
 
 // 新建项目
-export function createProjectApi(data: { project_name: string; creator: string; organization: string }) {
+export function createProjectApi(data: { project_name: string; simulation_type: string; creator: string; organization: string }) {
   return request<ApiResponse<void>>({
     url: "/modProjects/private/create",
     method: "post",

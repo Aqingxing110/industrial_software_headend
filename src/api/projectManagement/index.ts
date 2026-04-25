@@ -5,7 +5,8 @@ import type {
   Project,
   PaginatedResponse,
   CommonResponse,
-  PaginationParams
+  PaginationParams,
+  CreateProjectParams
 } from "@/api/projectManagement/types"
 
 /**
@@ -55,11 +56,14 @@ export function getAccessibleProjectsApi(
  * 创建私有项目
  * POST /modProjects/private/create
  */
-export function createPrivateProjectApi(projectName: string): Promise<CommonResponse> {
+export function createPrivateProjectApi(
+  projectName: string,
+  simulationType: CreateProjectParams["simulation_type"]
+): Promise<CommonResponse> {
   return request({
     url: "/modProjects/private/create",
     method: "post",
-    data: { project_name: projectName }
+    data: { project_name: projectName, simulation_type: simulationType }
   })
 }
 
@@ -67,11 +71,11 @@ export function createPrivateProjectApi(projectName: string): Promise<CommonResp
  * 创建共享项目（必须在组织内）
  * POST /modProjects/shared/create
  */
-export function createSharedProjectApi(projectName: string): Promise<CommonResponse> {
+export function createSharedProjectApi(projectName: string, simulationType: CreateProjectParams["simulation_type"]): Promise<CommonResponse> {
   return request({
     url: "/modProjects/shared/create",
     method: "post",
-    data: { project_name: projectName }
+    data: { project_name: projectName, simulation_type: simulationType }
   })
 }
 

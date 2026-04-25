@@ -4,12 +4,17 @@
  * 项目管理相关类型定义
  */
 
+export type SimulationType = "结构动力学" | "冲击动力学" | "多体动力学"
+
+export const SIMULATION_TYPE_OPTIONS: SimulationType[] = ["结构动力学", "冲击动力学", "多体动力学"]
+
 /**
  * 项目信息
  */
 export interface Project {
   projectId: number // 项目ID
   project_name: string // 项目名称
+  simulationType?: SimulationType // 仿真类型
   creation_time: string // 创建时间
   creator: string // 创建者/所有者
   organization?: string | null // 组织名称（共享项目时存在）
@@ -45,6 +50,11 @@ export interface CommonResponse {
   code: number
   message: string
   data: null
+}
+
+export interface CreateProjectParams {
+  project_name: string
+  simulation_type: SimulationType
 }
 
 /**
