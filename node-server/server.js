@@ -37,6 +37,9 @@ const startExe = async (exeType) => {
     case "solver-multibody":
       exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe4\\dist\\main.exe" // 多体求解器程序路径
       break
+    case "solver-weakFluid-SolidCoupling":
+      exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe4\\dist\\main.exe" // 流固弱耦合求解器程序路径
+      break
     // 后处理程序
     case "postprocess":
       exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe5\\dist\\main.exe" // 后处理程序路径
@@ -333,6 +336,15 @@ app.get("/start-solver-multibody-exe", async (req, res) => {
   try {
     await startExe("solver-multibody")
     res.send("多体求解器程序已启动")
+  } catch (error) {
+    res.status(500).send(`启动失败: ${error.message}`)
+  }
+})
+
+app.get("/start-solver-weakFluidSolidCoupling-exe", async (req, res) => {
+  try {
+    await startExe("solver-weakFluid-SolidCoupling")
+    res.send("流固弱耦合求解器程序已启动")
   } catch (error) {
     res.status(500).send(`启动失败: ${error.message}`)
   }

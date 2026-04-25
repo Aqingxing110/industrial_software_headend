@@ -166,7 +166,8 @@ const startByTaskType = () => {
     const exeTypeMap = {
       结构: "structure",
       冲击: "impact",
-      多体: "multibody"
+      多体: "multibody",
+      流固弱耦合: "weakFluid-SolidCoupling"
     }
 
     const mappedType = exeTypeMap[taskType.value]
@@ -296,6 +297,7 @@ onBeforeUnmount(() => {
       <button @click="startExe('structure')" :disabled="isExeRunning || positionLock">结构</button>
       <button @click="startExe('impact')" :disabled="isExeRunning || positionLock">冲击</button>
       <button @click="startExe('multibody')" :disabled="isExeRunning || positionLock">多体</button>
+      <button @click="startExe('weakFluidSolidCoupling')" :disabled="isExeRunning || positionLock">流固弱耦合</button>
     </div>
 
     <!-- 新增计算资源选择区域 -->

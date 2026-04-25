@@ -101,6 +101,7 @@
               <el-option label="结构" value="结构" />
               <el-option label="冲击GPU" value="冲击GPU" />
               <el-option label="冲击CPU" value="冲击CPU" />
+              <el-option label="流固弱耦合" value="流固弱耦合" />
             </template>
           </el-select>
         </el-form-item>
@@ -312,30 +313,30 @@ const startTask = async (row: any) => {
       ElMessage.success("任务已开始")
 
       // 检查是否需要计算资源
-      const needsComputeResource = row.simulationStage === "求解器" && row.type === "冲击" && row.computeResource
+      // const needsComputeResource = row.simulationStage === "求解器" && row.type === "冲击" && row.computeResource
 
-      // 准备路由参数
-      const routeParams = {
-        query: {
-          taskType: row.type,
-          // 安全添加计算资源参数
-          ...(needsComputeResource ? { computeResource: row.computeResource } : {})
-        }
-      }
+      // // 准备路由参数
+      // const routeParams = {
+      //   query: {
+      //     taskType: row.type,
+      //     // 安全添加计算资源参数
+      //     ...(needsComputeResource ? { computeResource: row.computeResource } : {})
+      //   }
+      // }
 
-      switch (row.simulationStage) {
-        case "前处理":
-          router.push({ path: "/simulation/pre-processing", ...routeParams })
-          break
-        case "后处理":
-          router.push({ path: "/simulation/post-processing", ...routeParams })
-          break
-        case "求解器":
-          router.push({ path: "/simulation/solver", ...routeParams })
-          break
-        default:
-          ElMessage.warning("未知的仿真阶段类型")
-      }
+      // switch (row.simulationStage) {
+      //   case "前处理":
+      //     router.push({ path: "/simulation/pre-processing", ...routeParams })
+      //     break
+      //   case "后处理":
+      //     router.push({ path: "/simulation/post-processing", ...routeParams })
+      //     break
+      //   case "求解器":
+      //     router.push({ path: "/simulation/solver", ...routeParams })
+      //     break
+      //   default:
+      //     ElMessage.warning("未知的仿真阶段类型")
+      // }
     } else {
       ElMessage.error(response.message || "开始任务失败")
     }

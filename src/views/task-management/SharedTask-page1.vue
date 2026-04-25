@@ -92,9 +92,9 @@
         </el-form-item>
         <el-form-item label="仿真类型" prop="simulation_type">
           <el-select v-model="projectForm.simulation_type" autocomplete="off">
-            <el-option label="结构动力学" value="type1" />
-            <el-option label="冲击动力学" value="type2" />
-            <el-option label="多体动力学" value="type3" />
+            <el-option label="结构动力学" value="结构动力学" />
+            <el-option label="冲击动力学" value="冲击动力学" />
+            <el-option label="多体动力学" value="多体动力学" />
           </el-select>
         </el-form-item>
         <el-form-item label="创建者">
