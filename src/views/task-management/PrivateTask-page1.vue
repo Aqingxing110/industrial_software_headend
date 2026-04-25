@@ -162,8 +162,6 @@ const projectForm = ref({
 const projectRules = ref({
   project_name: [{ required: true, message: "项目名称不能为空", trigger: "blur" }],
   simulation_type: [{ required: true, message: "请选择仿真类型", trigger: "change" }]
-  project_name: [{ required: true, message: "项目名称不能为空", trigger: "blur" }],
-  simulation_type: [{ required: true, message: "请选择仿真类型", trigger: "change" }]
 })
 
 const simulationTypeOptions = SIMULATION_TYPE_OPTIONS
