@@ -97,6 +97,12 @@ const startExe = async (exeType) => {
     console.log("正在处理其他操作，请稍后")
     return
   }
+  const getStartUrl = (exeType) => {
+    if (exeType) {
+      return `http://localhost:3334/start-postprocess-${exeType}-exe`
+    }
+    return "http://localhost:3334/start-postprocess-exe"
+  }
   try {
     positionLock.value = true
     statusMessage.value = "检查程序状态..."
@@ -115,7 +121,7 @@ const startExe = async (exeType) => {
 
     // 启动程序 - 无论任务类型如何，都调用同一个接口
     const startResponse = await axios.get(
-      `http://localhost:3334/start-postprocess-${exeType !== "" ? `${exeType}-exe` : "exe"}`,
+      getStartUrl(exeType),
       { timeout: 30000 } // 增加超时时间
     )
 
@@ -284,7 +290,7 @@ onBeforeUnmount(() => {
   <div>
     <!-- 按钮区域 - 单个启动按钮 -->
     <div class="button-group">
-      <button @click="startExe" :disabled="isExeRunning || positionLock" class="exe-btn">通用后处理</button>
+      <button @click="startExe('')" :disabled="isExeRunning || positionLock">通用后处理</button>
       <button @click="startExe('multibody')" :disabled="isExeRunning || positionLock">多体</button>
     </div>
 

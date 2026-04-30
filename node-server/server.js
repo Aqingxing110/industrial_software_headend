@@ -14,7 +14,7 @@ let childProcess = null
 let targetWindowId = null
 
 // 启动指定类型的exe程序
-const startExe = async (exeType) => {
+const startExe = async (exeType, resource = "GPU") => {
   let exePath = ""
   switch (exeType) {
     // 预处理程序
@@ -29,7 +29,11 @@ const startExe = async (exeType) => {
       break
     // 求解器程序
     case "solver-impact":
-      exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe4\\dist\\main.exe" // 冲击求解器程序路径
+      if (resource === "GPU") {
+        exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe4\\dist\\main.exe"
+      } else {
+        exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe4\\dist\\main.exe"
+      }
       break
     case "solver-structure":
       exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe4\\dist\\main.exe" // 结构求解器程序路径
@@ -37,15 +41,15 @@ const startExe = async (exeType) => {
     case "solver-multibody":
       exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe4\\dist\\main.exe" // 多体求解器程序路径
       break
-    case "solver-weakFluid-SolidCoupling":
+    case "solver-weakFluidSolidCoupling":
       exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe4\\dist\\main.exe" // 流固弱耦合求解器程序路径
       break
     // 后处理程序
     case "postprocess":
-      exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe5\\dist\\main.exe" // 后处理程序路径
+      exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe5\\dist\\main.exe" // 通用后处理程序路径
       break
     case "postprocess-multibody":
-      exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe5\\dist\\main.exe" // 后处理程序路径
+      exePath = "E:\\Work\\Laboratory_tasks\\exe\\GETexe5\\dist\\main.exe" // 多体后处理程序路径
       break
     default:
       throw new Error("无效的程序类型")
@@ -316,8 +320,9 @@ app.get("/start-preprocess-multibody-exe", async (req, res) => {
 // 求解器程序启动接口
 app.get("/start-solver-impact-exe", async (req, res) => {
   try {
-    await startExe("solver-impact")
-    res.send("冲击求解器程序已启动")
+    const resource = req.query.resource || "GPU"
+    await startExe("solver-impact", resource)
+    res.send(`冲击求解器程序(${resource})已启动`)
   } catch (error) {
     res.status(500).send(`启动失败: ${error.message}`)
   }
@@ -343,7 +348,7 @@ app.get("/start-solver-multibody-exe", async (req, res) => {
 
 app.get("/start-solver-weakFluidSolidCoupling-exe", async (req, res) => {
   try {
-    await startExe("solver-weakFluid-SolidCoupling")
+    await startExe("solver-weakFluidSolidCoupling")
     res.send("流固弱耦合求解器程序已启动")
   } catch (error) {
     res.status(500).send(`启动失败: ${error.message}`)
