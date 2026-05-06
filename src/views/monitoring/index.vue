@@ -8,8 +8,8 @@ import {
   ElPagination,
   ElTag,
   ElMessage,
-  TabPaneName,
-  ElMessageBox
+  TabPaneName
+  // ElMessageBox
 } from "element-plus"
 import { Server, Task } from "@/api/monitoring/types/task-server"
 import {
@@ -18,7 +18,9 @@ import {
   getAdjustableSpecifications,
   getTasksRunning,
   changeServerResource,
-  changeTaskPriority
+  changeTaskPriority,
+  TaskSummaryVO,
+  getTaskStatusStatistics
   // allocateTaskResources,
   // allocateServerResources
 } from "@/api/monitoring"
@@ -31,6 +33,13 @@ const isLoading = ref(false)
 const tasks = ref<Task[]>([])
 const totalTasks = ref(0)
 const isTaskLoading = ref(false)
+const taskStatusSummary = ref<TaskSummaryVO>({
+  pendingCount: 0,
+  runningCount: 0,
+  completedCount: 0,
+  failedCount: 0,
+  stoppedCount: 0
+})
 
 // 搜索 / 筛选（服务器）
 const searchQuery = ref("")
@@ -70,7 +79,7 @@ const taskPriorityForm = ref(1)
 // 资源分配相关响应式数据
 const selectedTasks = ref<Task[]>([])
 const selectedServers = ref<Server[]>([])
-const isAllocating = ref(false)
+// const isAllocating = ref(false)
 
 // ---------- 工具函数 ----------
 // 服务器状态处理
@@ -99,7 +108,8 @@ const getTaskStatusText = (status: string) => {
     running: "执行中",
     completed: "已完成",
     failed: "失败",
-    pending: "待执行"
+    pending: "待执行",
+    stopped: "已停止"
   }
   return map[status] || "未知"
 }
@@ -133,13 +143,13 @@ const sortTasks = (tasks: Task[]): Task[] => {
 }
 
 // 验证选中的任务/服务器是否合法
-const validateSelection = (): boolean => {
-  if (selectedTasks.value.length === 0 && selectedServers.value.length === 0) {
-    ElMessage.warning("请至少选择一个任务或服务器")
-    return false
-  }
-  return true
-}
+// const validateSelection = (): boolean => {
+//   if (selectedTasks.value.length === 0 && selectedServers.value.length === 0) {
+//     ElMessage.warning("请至少选择一个任务或服务器")
+//     return false
+//   }
+//   return true
+// }
 
 // ---------- API 调用封装 ----------
 const fetchServers = async () => {
@@ -175,6 +185,7 @@ const fetchTasks = async () => {
     })
     tasks.value = sortTasks(response.data.records)
     totalTasks.value = response.data.total
+    await fetchTaskStatusSummary()
   } catch (e: any) {
     ElMessage.error("获取任务列表失败，请稍后重试")
   } finally {
@@ -221,48 +232,60 @@ const handleSubmitPriority = async () => {
 }
 
 // 触发自动分配资源
-const triggerAutoAllocate = async () => {
-  if (!validateSelection()) return
+// const triggerAutoAllocate = async () => {
+//   if (!validateSelection()) return
 
+//   try {
+//     const confirmResult = await ElMessageBox.confirm("是否确认分配资源？", "资源分配确认", {
+//       confirmButtonText: "确认",
+//       cancelButtonText: "取消",
+//       type: "warning"
+//     })
+
+//     if (confirmResult === "confirm") {
+//       isAllocating.value = true
+//       // let res
+//       // if (activeTab.value === "task") {
+//       //   const taskIds = selectedTasks.value.map((task) => task.id)
+//       //   res = await allocateTaskResources(taskIds)
+//       // } else if (activeTab.value === "server") {
+//       //   const serverIds = selectedServers.value.map((server) => server.id)
+//       //   res = await allocateServerResources(serverIds)
+//       // }
+//       // if (res.code === 200) {
+//       //   ElMessage.success("资源分配成功！")
+//       //   fetchServers()
+//       //   fetchTasks()
+//       //   selectedTasks.value = []
+//       //   selectedServers.value = []
+//       // } else {
+//       //   ElMessage.error(`分配失败：${res.message}`)
+//       // }
+//       ElMessage.success("资源分配成功")
+//       fetchServers()
+//       fetchTasks()
+//       selectedTasks.value = []
+//       selectedServers.value = []
+//     }
+//   } catch (error) {
+//     if (error !== "cancel") {
+//       ElMessage.error("资源分配异常，请稍后重试")
+//       console.error("分配失败：", error)
+//     }
+//   } finally {
+//     isAllocating.value = false
+//   }
+// }
+
+const fetchTaskStatusSummary = async () => {
   try {
-    const confirmResult = await ElMessageBox.confirm("是否确认分配资源？", "资源分配确认", {
-      confirmButtonText: "确认",
-      cancelButtonText: "取消",
-      type: "warning"
-    })
-
-    if (confirmResult === "confirm") {
-      isAllocating.value = true
-      // let res
-      // if (activeTab.value === "task") {
-      //   const taskIds = selectedTasks.value.map((task) => task.id)
-      //   res = await allocateTaskResources(taskIds)
-      // } else if (activeTab.value === "server") {
-      //   const serverIds = selectedServers.value.map((server) => server.id)
-      //   res = await allocateServerResources(serverIds)
-      // }
-      // if (res.code === 200) {
-      //   ElMessage.success("资源分配成功！")
-      //   fetchServers()
-      //   fetchTasks()
-      //   selectedTasks.value = []
-      //   selectedServers.value = []
-      // } else {
-      //   ElMessage.error(`分配失败：${res.message}`)
-      // }
-      ElMessage.success("资源分配成功")
-      fetchServers()
-      fetchTasks()
-      selectedTasks.value = []
-      selectedServers.value = []
+    const response = await getTaskStatusStatistics()
+    if (response.data) {
+      taskStatusSummary.value = response.data
     }
-  } catch (error) {
-    if (error !== "cancel") {
-      ElMessage.error("资源分配异常，请稍后重试")
-      console.error("分配失败：", error)
-    }
-  } finally {
-    isAllocating.value = false
+  } catch (e: any) {
+    ElMessage.error("获取任务状态统计失败，请稍后重试")
+    console.error("统计接口调用失败：", e)
   }
 }
 
@@ -354,12 +377,17 @@ onMounted(() => {
         <!-- 服务器搜索 / 筛选 -->
         <div class="header">
           <div class="search-container">
-            <el-input v-model="searchQuery" placeholder="搜索服务器名称或网络地址" clearable @keyup.enter="fetchServers" />
+            <el-input
+              v-model="searchQuery"
+              placeholder="搜索服务器名称或网络地址"
+              clearable
+              @keyup.enter="fetchServers"
+            />
             <el-button type="primary" @click="fetchServers" :loading="isLoading">搜索</el-button>
           </div>
           <div class="button-group">
             <el-button @click="fetchServers" :loading="isLoading"> <i class="el-icon-refresh" /> 刷新 </el-button>
-            <el-button type="primary" @click="triggerAutoAllocate" :loading="isAllocating"> 自动分配资源 </el-button>
+            <!-- <el-button type="primary" @click="triggerAutoAllocate" :loading="isAllocating"> 自动分配资源 </el-button> -->
           </div>
         </div>
 
@@ -383,7 +411,7 @@ onMounted(() => {
           @selection-change="(val) => (selectedServers = val)"
           ref="serverTableRef"
         >
-          <el-table-column type="selection" width="55" />
+          <!-- <el-table-column type="selection" width="55" /> -->
           <el-table-column prop="name" label="服务器名称" min-width="150" />
           <el-table-column prop="ip" label="网络地址" width="130" />
           <el-table-column prop="specification" label="服务器规格" width="150" />
@@ -443,7 +471,7 @@ onMounted(() => {
         />
       </el-tab-pane>
 
-        <el-tab-pane label="任务管理" name="task">
+      <el-tab-pane label="任务管理" name="task">
         <!-- 任务搜索 / 筛选 -->
         <div class="header">
           <div class="search-container">
@@ -458,7 +486,7 @@ onMounted(() => {
           <div class="button-group">
             <el-button @click="fetchTasks" :loading="isTaskLoading"> <i class="el-icon-refresh" /> 刷新 </el-button>
             <!-- 新增：自动分配资源按钮 -->
-            <el-button type="primary" @click="triggerAutoAllocate" :loading="isAllocating"> 自动分配资源 </el-button>
+            <!-- <el-button type="primary" @click="triggerAutoAllocate" :loading="isAllocating"> 自动分配资源 </el-button> -->
           </div>
         </div>
 
@@ -467,6 +495,7 @@ onMounted(() => {
             <el-option label="全部状态" value="" />
             <el-option label="执行中" value="running" />
             <el-option label="已完成" value="completed" />
+            <el-option label="已停止" value="stopped" />
             <el-option label="失败" value="failed" />
             <el-option label="待执行" value="pending" />
           </el-select>
@@ -478,6 +507,28 @@ onMounted(() => {
           </el-select>
 
           <el-button @click="resetTaskFilters">重置筛选</el-button>
+          <div class="taskStatusSummary">
+            <span class="total-count">
+              总计：{{ totalTasks }}
+              个任务
+            </span>
+            <el-tag :type="getTaskStatusTagType('pending')" size="small" class="status-tag">
+              待执行：{{ taskStatusSummary.pendingCount }}
+            </el-tag>
+            <el-tag :type="getTaskStatusTagType('running')" size="small" class="status-tag">
+              执行中：{{ taskStatusSummary.runningCount }}
+            </el-tag>
+            <el-tag :type="getTaskStatusTagType('completed')" size="small" class="status-tag">
+              已完成：{{ taskStatusSummary.completedCount }}
+            </el-tag>
+            <el-tag :type="getTaskStatusTagType('stopped')" size="small" class="status-tag">
+              已停止：{{ taskStatusSummary.stoppedCount }}
+            </el-tag>
+            <el-tag :type="getTaskStatusTagType('failed')" size="small" class="status-tag">
+              失败：{{ taskStatusSummary.failedCount }}
+            </el-tag>
+            <el-tag type="info" size="small" class="status-tag"> 已停止：{{ taskStatusSummary.stoppedCount }} </el-tag>
+          </div>
         </div>
 
         <!-- 任务列表 -->
@@ -490,7 +541,7 @@ onMounted(() => {
           ref="taskTableRef"
         >
           <!-- 新增：批量选择列 -->
-          <el-table-column type="selection" width="55" />
+          <!-- <el-table-column type="selection" width="55" /> -->
           <el-table-column prop="taskName" label="任务名称" min-width="180" />
           <el-table-column prop="serverName" label="所属服务器" min-width="150" />
           <el-table-column prop="type" label="任务类型" width="120" />
@@ -548,7 +599,7 @@ onMounted(() => {
 
     <!-- 服务器可用资源调整弹窗 -->
     <el-dialog v-model="showServerResourceDialog" title="调整服务器规格" width="400px">
-        <el-form :model="serverResourceForm" label-width="100px">
+      <el-form :model="serverResourceForm" label-width="100px">
         <el-form-item label="服务器规格">
           <el-select v-model="serverResourceForm.specification" placeholder="请选择可调整规格" @change="onSpecChange">
             <el-option
@@ -658,6 +709,26 @@ onMounted(() => {
     margin-top: 20px;
     justify-content: center;
     flex-wrap: wrap;
+  }
+
+  // 新增：任务状态统计样式
+  .taskStatusSummary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    flex-wrap: wrap;
+    padding: 4px 0;
+
+    .total-count {
+      font-size: 14px;
+      font-weight: 500;
+      color: #303133;
+    }
+
+    .status-tag {
+      margin: 2px 0;
+    }
   }
 }
 </style>

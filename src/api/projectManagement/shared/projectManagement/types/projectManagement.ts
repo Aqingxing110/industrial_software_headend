@@ -5,13 +5,13 @@ export interface project {
   project_name: string
   // 仿真类型
   simulationType?: "结构动力学" | "冲击动力学" | "多体动力学"
-  // 项目创建者
-  creator: string
+  // 项目创建者:当前登录的用户
+  // creator: string
   // 项目所属组织（和创建者所属的组织一致）
   // organization: string
   // 项目创建时间
   creation_time: string
-  // 加密程度(0)：共享：0 私有：1
+  // 加密程度(1)：共享：0 私有：1
   // lock:1 上锁了该项目是私有的    lock:0 未上锁该项目共享给同组织的所有人
 }
 

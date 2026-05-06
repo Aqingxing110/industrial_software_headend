@@ -20,7 +20,14 @@ export function getTasksByProjectIdApi(
 // 新建任务
 export function createTaskApi(
   projectId: number,
-  data: { taskName: string; simulationStage: string; type: string; creator: string; computeResource?: string } // 新增可选的计算资源参数
+  data: {
+    taskName: string
+    simulationStage: string
+    type: string
+    creator: string
+    priority?: number
+    computeResource?: string
+  }
 ) {
   return request<ApiResponse<void>>({
     url: `/modTasks/shared/${projectId}/create`,
@@ -37,18 +44,20 @@ export function deleteTaskApi(taskId: number) {
   })
 }
 
-// 开始任务
-export function startTaskApi(taskId: number) {
+// 远程开始任务
+export function remoteStartTaskApi(taskId: number, priority: number) {
   return request<ApiResponse<void>>({
-    url: `/modTasks/start/${taskId}`,
-    method: "put"
+    url: `/modTasks/start/remote/${taskId}`,
+    method: "put",
+    data: { priority }
   })
 }
 
-// 结束任务
-export function stopTaskApi(taskId: number) {
+// 客户端本地任务状态上报
+export function changeTaskStatusApi(taskId: number, status: string, progress?: number, errorMsg?: string) {
   return request<ApiResponse<void>>({
-    url: `/modTasks/stop/${taskId}`,
-    method: "put"
+    url: `/modTasks/client/status/${taskId}`,
+    method: "put",
+    data: { status, progress, errorMsg }
   })
 }

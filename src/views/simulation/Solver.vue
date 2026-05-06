@@ -69,6 +69,8 @@ const stopStatusPolling = () => {
   if (intervalId) {
     clearInterval(intervalId)
     intervalId = null
+    taskType.value = "" // 清除任务类型参数，避免重复启动
+    errorMessage.value = "" // 清除错误信息
   }
 }
 

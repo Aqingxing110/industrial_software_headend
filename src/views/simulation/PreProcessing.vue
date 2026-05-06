@@ -68,6 +68,8 @@ const stopStatusPolling = () => {
   if (intervalId) {
     clearInterval(intervalId)
     intervalId = null
+    taskType.value = ""
+    errorMessage.value = ""
   }
 }
 
@@ -164,8 +166,7 @@ const startByTaskType = async () => {
 
     // 映射任务类型到对应的exe类型
     const exeTypeMap = {
-      结构: "structure",
-      冲击: "impact",
+      通用后处理: "通用后处理",
       多体: "multibody"
     }
 

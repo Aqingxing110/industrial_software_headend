@@ -19,7 +19,6 @@
       <el-table-column prop="creator" label="创建者" width="100" />
       <el-table-column prop="simulationStage" label="仿真阶段" width="100" />
       <el-table-column prop="type" label="类型" width="100" />
-      <!-- 缩短计算资源列宽度 -->
       <el-table-column v-if="showComputeResourceColumn" label="计算资源" width="100">
         <template #default="{ row }">
           <span>{{ row.computerResource || "-" }}</span>
@@ -31,27 +30,26 @@
           <el-tag :type="getStatusTagType(row.status)">{{ row.status }}</el-tag>
         </template>
       </el-table-column>
-      <!-- 增加操作列宽度 -->
       <el-table-column label="操作" width="280">
         <template #default="{ row }">
           <div class="action-buttons">
             <el-button
               size="small"
-              @click="startTask(row)"
+              @click="openStartTaskDialog(row)"
               :loading="row.startLoading"
               :disabled="row.status !== '未启动'"
             >
               开始
             </el-button>
-            <!-- <el-button
+            <!-- 修改状态按钮：仅非 pending / completed 显示 -->
+            <el-button
               size="small"
-              type="danger"
-              @click="stopTask(row)"
-              :loading="row.stopLoading"
-              :disabled="row.status === '未启动'"
+              type="warning"
+              @click="openEditStatusDialog(row)"
+              :disabled="row.status === '未启动' || row.status === '已结束'"
             >
-              结束
-            </el-button> -->
+              修改状态
+            </el-button>
             <el-button size="small" type="danger" @click="deleteTask(row)" :loading="row.deleteLoading">
               删除
             </el-button>
@@ -114,6 +112,59 @@
         <el-button type="primary" @click="handleCreateTask">确认</el-button>
       </template>
     </el-dialog>
+    <!-- 开始任务对话框 -->
+    <el-dialog title="开始任务" v-model="startTaskDialogVisible" width="400px">
+      <el-form ref="startTaskFormRef" :model="startTaskForm" :rules="startTaskRules" label-width="auto">
+        <el-form-item label="执行方式" prop="executionMode">
+          <el-radio-group v-model="startTaskForm.executionMode">
+            <el-radio label="local">本地</el-radio>
+            <el-radio label="remote">远程</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="优先级" prop="priority" v-if="startTaskForm.executionMode === 'remote'">
+          <el-select v-model="startTaskForm.priority" placeholder="请选择优先级">
+            <el-option label="高" :value="1" />
+            <el-option label="中" :value="2" />
+            <el-option label="低" :value="3" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="startTaskDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmStartTask" :loading="currentTask?.startLoading"> 确认 </el-button>
+      </template>
+    </el-dialog>
+    <!-- 修改任务状态弹窗 -->
+    <el-dialog title="修改任务状态" v-model="editStatusDialogVisible" width="500px">
+      <el-form ref="editStatusFormRef" :model="editStatusForm" :rules="editStatusRules" label-width="auto">
+        <el-form-item label="任务状态" prop="status">
+          <el-radio-group v-model="editStatusForm.status">
+            <el-radio label="running">运行中</el-radio>
+            <el-radio label="stopped">已停止</el-radio>
+            <el-radio label="failed">执行失败</el-radio>
+          </el-radio-group>
+        </el-form-item>
+
+        <!-- stopped / failed 显示任务进程 -->
+        <el-form-item
+          label="任务进程"
+          prop="process"
+          v-if="editStatusForm.status === 'stopped' || editStatusForm.status === 'failed'"
+        >
+          <el-input v-model="editStatusForm.process" placeholder="请填写任务进程(0-100)" />
+        </el-form-item>
+
+        <!-- failed 显示失败原因 -->
+        <el-form-item label="失败原因" prop="failReason" v-if="editStatusForm.status === 'failed'">
+          <el-input v-model="editStatusForm.failReason" type="textarea" :rows="3" placeholder="请填写失败原因" />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="editStatusDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmEditStatus" :loading="statusLoading">确认修改</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -132,6 +183,8 @@ import {
   ElFormItem,
   ElSelect,
   ElOption,
+  ElRadio,
+  ElRadioGroup,
   ElMessage,
   ElMessageBox
 } from "element-plus"
@@ -140,8 +193,8 @@ import {
   getTasksByProjectIdApi,
   createTaskApi,
   deleteTaskApi,
-  startTaskApi
-  // stopTaskApi
+  remoteStartTaskApi,
+  changeTaskStatusApi
 } from "@/api/projectManagement/private/taskManagement"
 import type { task } from "@/api/projectManagement/private/taskManagement/types/taskManagement"
 
@@ -183,6 +236,88 @@ const taskRules = ref({
   type: [{ required: true, message: "请选择类型", trigger: "change" }]
 })
 
+// 开始任务对话框相关
+const startTaskDialogVisible = ref(false)
+const startTaskFormRef = ref()
+const startTaskForm = ref({
+  executionMode: "", // local/remote
+  priority: 2 // 默认中优先级
+})
+const startTaskRules = ref({
+  executionMode: [{ required: true, message: "请选择执行方式", trigger: "change" }],
+  priority: [
+    {
+      required: true,
+      message: "请选择优先级",
+      trigger: "change",
+      validator: (rule: any, value: any, callback: any) => {
+        // 仅远程模式下验证优先级
+        if (startTaskForm.value.executionMode === "remote" && !value) {
+          callback(new Error("请选择优先级"))
+        } else {
+          callback()
+        }
+      }
+    }
+  ]
+})
+const currentTask = ref<(task & { startLoading: boolean; stopLoading: boolean; deleteLoading: boolean }) | null>(null)
+
+// 修改任务状态
+const editStatusDialogVisible = ref(false)
+const editStatusFormRef = ref()
+const statusLoading = ref(false)
+const editStatusForm = ref({
+  status: "",
+  process: 0,
+  failReason: ""
+})
+const editStatusRules = ref({
+  status: [{ required: true, message: "请选择任务状态", trigger: "change" }],
+  process: [{ required: true, message: "请填写任务进程", trigger: "blur" }],
+  failReason: [{ required: true, message: "请填写失败原因", trigger: "blur" }]
+})
+const currentEditTask = ref<any>(null)
+
+// 打开修改状态弹窗
+const openEditStatusDialog = (row: any) => {
+  currentEditTask.value = row
+  editStatusForm.value = {
+    status: row.status || "",
+    process: row.process || "",
+    failReason: row.failReason || ""
+  }
+  editStatusDialogVisible.value = true
+}
+
+// 确认修改状态
+const confirmEditStatus = async () => {
+  if (!currentEditTask.value) return
+  await editStatusFormRef.value?.validate(async (valid: boolean) => {
+    if (!valid) return
+    try {
+      statusLoading.value = true
+      const res = await changeTaskStatusApi(
+        currentEditTask.value.taskId,
+        editStatusForm.value.status,
+        editStatusForm.value.process,
+        editStatusForm.value.failReason
+      )
+      if (res.code === 200) {
+        ElMessage.success("状态修改成功")
+        await fetchTasks(true)
+        editStatusDialogVisible.value = false
+      } else {
+        ElMessage.error(res.message || "修改失败")
+      }
+    } catch (err) {
+      console.error(err)
+      ElMessage.error("修改任务状态失败")
+    } finally {
+      statusLoading.value = false
+    }
+  })
+}
 // 获取分页任务数据
 const fetchTasks = async (forceUpdate = false) => {
   if (isLoading.value && !forceUpdate) return
@@ -200,7 +335,6 @@ const fetchTasks = async (forceUpdate = false) => {
       taskData.value = response.data.records.map((task) => ({
         ...task,
         computeResource: task.computeResource || "",
-        // 添加按钮加载状态
         startLoading: false,
         stopLoading: false,
         deleteLoading: false
@@ -303,72 +437,90 @@ const deleteTask = async (row: any) => {
   }
 }
 
-// 开始任务
-const startTask = async (row: any) => {
-  try {
-    row.startLoading = true
-
-    //调用开始任务API
-    const response = await startTaskApi(row.taskId)
-    if (response.code === 200) {
-      ElMessage.success("任务已开始")
-
-      // 检查是否需要计算资源
-      // const needsComputeResource = row.simulationStage === "求解器" && row.type === "冲击" && row.computeResource
-
-      // // 准备路由参数
-      // const routeParams = {
-      //   query: {
-      //     taskType: row.type,
-      //     // 安全添加计算资源参数
-      //     ...(needsComputeResource ? { computeResource: row.computeResource } : {})
-      //   }
-      // }
-
-      // switch (row.simulationStage) {
-      //   case "前处理":
-      //     router.push({ path: "/simulation/pre-processing", ...routeParams })
-      //     break
-      //   case "后处理":
-      //     router.push({ path: "/simulation/post-processing", ...routeParams })
-      //     break
-      //   case "求解器":
-      //     router.push({ path: "/simulation/solver", ...routeParams })
-      //     break
-      //   default:
-      //     ElMessage.warning("未知的仿真阶段类型")
-      // }
-    } else {
-      ElMessage.error(response.message || "开始任务失败")
-    }
-  } catch (error) {
-    console.error("开始任务失败:", error)
-    ElMessage.error("开始任务失败")
-  } finally {
-    row.startLoading = false
+// 打开开始任务弹窗
+const openStartTaskDialog = (row: any) => {
+  currentTask.value = row
+  // 重置表单
+  startTaskFormRef.value?.resetFields()
+  startTaskForm.value = {
+    executionMode: "",
+    priority: 2
   }
+  startTaskDialogVisible.value = true
 }
 
-// 结束任务
-// const stopTask = async (row: any) => {
-//   try {
-//     row.stopLoading = true
+// 确认开始任务（弹窗确认按钮点击事件）
+const confirmStartTask = async () => {
+  if (!currentTask.value) return
 
-//     // 实际API调用应在此处
-//     const response = await stopTaskApi(row.taskId)
-//     if (response.code === 200) {
-//       row.status = "已结束"
-//       ElMessage.success("任务已结束")
-//     } else {
-//       ElMessage.error(response.message || "结束任务失败")
-//     }
-//   } catch (error) {
-//     console.error("结束任务失败:", error)
-//     ElMessage.error("结束任务失败")
-//   } finally {
-//     row.stopLoading = false
-//   }
-// }
+  await startTaskFormRef.value?.validate(async (valid: any) => {
+    if (!valid) {
+      ElMessage.error("请填写完整的执行信息")
+      return
+    }
+
+    try {
+      currentTask.value!.startLoading = true
+      let response
+
+      // 根据执行方式调用不同API
+      if (startTaskForm.value.executionMode === "remote") {
+        // 远程执行：传递优先级参数
+        response = await remoteStartTaskApi(currentTask.value!.taskId, startTaskForm.value.priority)
+      } else {
+        // 本地执行
+        response = await changeTaskStatusApi(currentTask.value!.taskId, "running")
+      }
+
+      if (response.code === 200) {
+        ElMessage.success("任务已开始")
+        if (startTaskForm.value.executionMode === "local") {
+          startTask(currentTask.value)
+        }
+        await fetchTasks(true)
+        startTaskDialogVisible.value = false
+      } else {
+        ElMessage.error(response.message || "开始任务失败")
+      }
+    } catch (error) {
+      console.error("开始任务失败:", error)
+      ElMessage.error("开始任务失败")
+    } finally {
+      if (currentTask.value) {
+        currentTask.value.startLoading = false
+      }
+    }
+  })
+}
+
+// 开始任务
+const startTask = async (row: any) => {
+  // 检查是否需要计算资源
+  const needsComputeResource = row.simulationStage === "求解器" && row.type === "冲击" && row.computeResource
+
+  // 准备路由参数
+  const routeParams = {
+    query: {
+      taskType: row.type,
+      // 安全添加计算资源参数
+      ...(needsComputeResource ? { computeResource: row.computeResource } : {})
+    }
+  }
+
+  switch (row.simulationStage) {
+    case "前处理":
+      router.push({ path: "/simulation/pre-processing", ...routeParams })
+      break
+    case "后处理":
+      router.push({ path: "/simulation/post-processing", ...routeParams })
+      break
+    case "求解器":
+      router.push({ path: "/simulation/solver", ...routeParams })
+      break
+    default:
+      ElMessage.warning("未知的仿真阶段类型")
+  }
+}
 
 // 获取状态标签类型
 const getStatusTagType = (status: string) => {

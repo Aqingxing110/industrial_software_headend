@@ -21,7 +21,12 @@ export function getProjectsApi(data: { pageNum: number; pageSize: number; keywor
 }
 
 // 新建共享项目 - 修改路径与后端一致
-export function createProjectApi(data: { project_name: string; simulation_type: string; creator: string; organization: string }) {
+export function createProjectApi(data: {
+  project_name: string
+  simulation_type: string
+  creator: string
+  organization: string
+}) {
   return request<ApiResponse<void>>({
     url: "/modProjects/shared/create",
     method: "post",

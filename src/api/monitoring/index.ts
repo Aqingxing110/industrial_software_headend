@@ -1,5 +1,12 @@
 import { request } from "@/utils/service"
 import type { ApiResponse, Server, Task, PageData } from "@/api/monitoring/types/task-server"
+interface TaskSummaryVO {
+  pendingCount: number
+  runningCount: number
+  completedCount: number
+  failedCount: number
+  stoppedCount: number
+}
 
 // 同步阿里云服务器信息至数据库
 function synchronousCloudServer() {
@@ -59,6 +66,7 @@ function changeTaskPriority(taskId: string, priority: number) {
   })
 }
 
+// 分配资源给任务
 function allocateTaskResources(taskIds: number[]) {
   return request<ApiResponse<void>>({
     url: `/monitoring/tasks/allocate`,
@@ -67,11 +75,20 @@ function allocateTaskResources(taskIds: number[]) {
   })
 }
 
+// 分配服务器资源
 function allocateServerResources(serverIds: number[]) {
   return request<ApiResponse<void>>({
     url: `/monitoring/servers/allocate`,
     method: "post",
     data: { serverIds }
+  })
+}
+
+// 获取任务状态统计
+function getTaskStatusStatistics() {
+  return request<ApiResponse<TaskSummaryVO>>({
+    url: "/monitoring/tasks/summary",
+    method: "get"
   })
 }
 
@@ -83,5 +100,7 @@ export {
   changeServerResource,
   changeTaskPriority,
   allocateTaskResources,
-  allocateServerResources
+  allocateServerResources,
+  getTaskStatusStatistics
 }
+export type { TaskSummaryVO }

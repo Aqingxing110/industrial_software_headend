@@ -68,6 +68,8 @@ const stopStatusPolling = () => {
   if (intervalId) {
     clearInterval(intervalId)
     intervalId = null
+    taskType.value = ""
+    errorMessage.value = ""
   }
 }
 
